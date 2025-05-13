@@ -1,7 +1,4 @@
-import {
-  DefaultTheme,
-  ThemeProvider,
-} from "@react-navigation/native";
+import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -16,7 +13,7 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
 
   useEffect(() => {
@@ -40,10 +37,14 @@ export default function RootLayout() {
     <ThemeProvider value={DefaultTheme}>
       <Stack
         screenOptions={({ route }) => ({
-          headerShown: !route.name.startsWith("tempobook"),
+          headerShown: false,
         })}
       >
-        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="index" />
+        <Stack.Screen name="team/index" />
+        <Stack.Screen name="team/create" />
+        <Stack.Screen name="team/[id]/index" />
+        <Stack.Screen name="team/[id]/roster" />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
