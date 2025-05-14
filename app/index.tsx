@@ -8,6 +8,7 @@ import SplashScreen from "./components/SplashScreen";
 export default function HomeScreen() {
   const router = useRouter();
   const [showSplash, setShowSplash] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false); // This would be determined by your auth state
 
   useEffect(() => {
     // The splash screen component will handle its own timing
@@ -17,14 +18,70 @@ export default function HomeScreen() {
     return <SplashScreen onFinish={() => setShowSplash(false)} />;
   }
 
+  // If not logged in, show auth options
+  if (!isLoggedIn) {
+    return (
+      <View className="flex-1 bg-white">
+        {/* Header */}
+        <View className="bg-blue-600 pt-14 pb-8 px-4 items-center">
+          <Image
+            source={require("../assets/images/NamibiaHockey app.jpeg")}
+            className="w-24 h-24 rounded-full bg-white mb-4"
+            contentFit="cover"
+          />
+          <Text className="text-2xl font-bold text-white mb-1">
+            Namibia Hockey Union
+          </Text>
+          <Text className="text-white opacity-80 text-center">
+            Team Registration & Management Portal
+          </Text>
+        </View>
+
+        {/* Welcome Content */}
+        <View className="p-6 flex-1 justify-center">
+          <Text className="text-2xl font-bold text-gray-800 mb-2 text-center">
+            Welcome
+          </Text>
+          <Text className="text-gray-600 mb-8 text-center">
+            Sign in or create an account to manage your hockey teams
+          </Text>
+
+          <TouchableOpacity
+            className="bg-blue-600 py-4 rounded-lg items-center mb-4"
+            onPress={() => router.push("/auth/login")}
+          >
+            <Text className="text-white font-semibold text-base">Sign In</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            className="bg-white py-4 rounded-lg items-center border border-blue-600"
+            onPress={() => router.push("/auth/register")}
+          >
+            <Text className="text-blue-600 font-semibold text-base">
+              Create Account
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Footer */}
+        <View className="p-6 items-center">
+          <TouchableOpacity onPress={() => setIsLoggedIn(true)}>
+            <Text className="text-gray-500 text-sm">Continue as Guest</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  // Main dashboard (when logged in)
   return (
     <View className="flex-1 bg-white">
       {/* Header */}
       <View className="bg-blue-600 pt-14 pb-8 px-4 items-center">
         <Image
-          source={require("../assets/images/icon.png")}
+          source={require("../assets/images/NamibiaHockey app.jpeg")}
           className="w-24 h-24 rounded-full bg-white mb-4"
-          contentFit="contain"
+          contentFit="cover"
         />
         <Text className="text-2xl font-bold text-white mb-1">
           Namibia Hockey Union
