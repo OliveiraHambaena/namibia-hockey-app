@@ -45,6 +45,9 @@ export default function RootLayout() {
         <Stack.Screen name="team/create" />
         <Stack.Screen name="team/[id]/index" />
         <Stack.Screen name="team/[id]/roster" />
+        <Stack.Screen name="events/index" />
+        <Stack.Screen name="profile/index" />
+        <Stack.Screen name="team/edit/[id]" />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

@@ -65,7 +65,10 @@ export default function HomeScreen() {
         </View>
 
         <View className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-          <TouchableOpacity className="p-4 flex-row items-center">
+          <TouchableOpacity
+            className="p-4 flex-row items-center"
+            onPress={() => router.push("/profile")}
+          >
             <View className="w-12 h-12 bg-purple-100 rounded-full items-center justify-center mr-4">
               <Text className="text-purple-600 text-lg font-bold">P</Text>
             </View>

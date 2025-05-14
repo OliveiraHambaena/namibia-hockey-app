@@ -25,6 +25,7 @@ const TeamProfile = () => {
   const router = useRouter();
   const { id = "1" } = useLocalSearchParams();
   const [activeTab, setActiveTab] = useState("info");
+  const [shareModalVisible, setShareModalVisible] = useState(false);
 
   // Mock data for team profile
   const teamData = {
@@ -196,7 +197,7 @@ const TeamProfile = () => {
               <Edit size={20} color="#3b82f6" />
             </TouchableOpacity>
           )}
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => setShareModalVisible(true)}>
             <Share2 size={20} color="#3b82f6" />
           </TouchableOpacity>
         </View>

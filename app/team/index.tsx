@@ -4,10 +4,12 @@ import { Image } from "expo-image";
 import { Link, useRouter } from "expo-router";
 import { Plus, Menu } from "lucide-react-native";
 import TeamCard from "../components/TeamCard";
+import MenuModal from "../components/MenuModal";
 
 const TeamIndexPage = () => {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("my-teams");
+  const [menuVisible, setMenuVisible] = useState(false);
 
   // Mock data for teams
   const myTeams = [
@@ -59,9 +61,13 @@ const TeamIndexPage = () => {
         <Text className="flex-1 text-lg font-bold ml-3 text-gray-800">
           Namibia Hockey Union
         </Text>
-        <TouchableOpacity className="p-1">
+        <TouchableOpacity className="p-1" onPress={() => setMenuVisible(true)}>
           <Menu size={24} color="#333" />
         </TouchableOpacity>
+        <MenuModal
+          visible={menuVisible}
+          onClose={() => setMenuVisible(false)}
+        />
       </View>
 
       {/* Navigation Tabs */}
