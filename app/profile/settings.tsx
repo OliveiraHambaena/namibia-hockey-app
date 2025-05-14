@@ -26,6 +26,20 @@ export default function SettingsScreen() {
 
       {/* Settings Content */}
       <ScrollView className="flex-1 p-4">
+        <TouchableOpacity
+          className="bg-blue-600 py-3 rounded-lg items-center mb-4"
+          onPress={() => router.push("/profile/edit")}
+        >
+          <Text className="text-white font-semibold text-base">Edit Profile</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          className="bg-gray-100 py-3 rounded-lg items-center"
+          onPress={() => router.push("/profile/settings")}
+        >
+          <Text className="text-blue-600 font-semibold text-base">Settings</Text>
+        </TouchableOpacity>
+
         <View className="bg-white rounded-lg shadow-sm mb-4 overflow-hidden">
           <Text className="p-4 text-lg font-bold text-gray-800 border-b border-gray-100">
             Appearance
