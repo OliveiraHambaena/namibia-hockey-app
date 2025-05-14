@@ -95,7 +95,10 @@ export default function ProfileScreen() {
             />
           </View>
 
-          <TouchableOpacity className="p-4 flex-row items-center border-b border-gray-100">
+          <TouchableOpacity
+            className="p-4 flex-row items-center border-b border-gray-100"
+            onPress={() => router.push("/profile/privacy")}
+          >
             <Shield size={20} color="#4B5563" />
             <Text className="text-gray-800 ml-3 flex-1">
               Privacy & Security
@@ -103,7 +106,10 @@ export default function ProfileScreen() {
             <ChevronRight size={18} color="#9CA3AF" />
           </TouchableOpacity>
 
-          <TouchableOpacity className="p-4 flex-row items-center">
+          <TouchableOpacity
+            className="p-4 flex-row items-center"
+            onPress={() => router.push("/profile/help")}
+          >
             <HelpCircle size={20} color="#4B5563" />
             <Text className="text-gray-800 ml-3 flex-1">Help & Support</Text>
             <ChevronRight size={18} color="#9CA3AF" />

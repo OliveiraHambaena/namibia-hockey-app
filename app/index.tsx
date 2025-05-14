@@ -1,10 +1,21 @@
+import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
+import SplashScreen from "./components/SplashScreen";
 
 export default function HomeScreen() {
   const router = useRouter();
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    // The splash screen component will handle its own timing
+  }, []);
+
+  if (showSplash) {
+    return <SplashScreen onFinish={() => setShowSplash(false)} />;
+  }
 
   return (
     <View className="flex-1 bg-white">
@@ -12,7 +23,7 @@ export default function HomeScreen() {
       <View className="bg-blue-600 pt-14 pb-8 px-4 items-center">
         <Image
           source={require("../assets/images/icon.png")}
-          className="w-20 h-20 rounded-full bg-white mb-4"
+          className="w-24 h-24 rounded-full bg-white mb-4"
           contentFit="contain"
         />
         <Text className="text-2xl font-bold text-white mb-1">
@@ -32,7 +43,7 @@ export default function HomeScreen() {
         <View className="bg-white rounded-xl shadow-sm overflow-hidden mb-4 border border-gray-100">
           <TouchableOpacity
             className="p-4 flex-row items-center"
-            onPress={() => router.push("/team")}
+            onPress={() => router.push("team")}
           >
             <View className="w-12 h-12 bg-blue-100 rounded-full items-center justify-center mr-4">
               <Text className="text-blue-600 text-lg font-bold">T</Text>
@@ -48,7 +59,10 @@ export default function HomeScreen() {
         </View>
 
         <View className="bg-white rounded-xl shadow-sm overflow-hidden mb-4 border border-gray-100">
-          <TouchableOpacity className="p-4 flex-row items-center">
+          <TouchableOpacity
+            className="p-4 flex-row items-center"
+            onPress={() => router.push("/events")}
+          >
             <View className="w-12 h-12 bg-green-100 rounded-full items-center justify-center mr-4">
               <Text className="text-green-600 text-lg font-bold">E</Text>
             </View>

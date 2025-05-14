@@ -6,7 +6,13 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
 } from "react-native";
-import { Settings, HelpCircle, Info, LogOut } from "lucide-react-native";
+import {
+  Settings,
+  HelpCircle,
+  Info,
+  LogOut,
+  Shield,
+} from "lucide-react-native";
 import { useRouter } from "expo-router";
 
 interface MenuModalProps {
@@ -29,7 +35,7 @@ const MenuModal = ({ visible, onClose }: MenuModalProps) => {
       label: "Settings",
       onPress: () => {
         onClose();
-        console.log("Settings pressed");
+        router.push("/profile/settings");
       },
     },
     {
@@ -45,7 +51,15 @@ const MenuModal = ({ visible, onClose }: MenuModalProps) => {
       label: "Help",
       onPress: () => {
         onClose();
-        console.log("Help pressed");
+        router.push("/profile/help");
+      },
+    },
+    {
+      icon: <Shield size={20} color="#4B5563" />,
+      label: "Privacy & Security",
+      onPress: () => {
+        onClose();
+        router.push("/profile/privacy");
       },
     },
     {

@@ -3,10 +3,10 @@ import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import "react-native-reanimated";
 import "../global.css";
-import { Platform } from "react-native";
+import { Platform, View } from "react-native";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -23,9 +23,17 @@ export default function RootLayout() {
     }
   }, []);
 
+  const onLayoutRootView = useCallback(async () => {
+    if (loaded) {
+      await SplashScreen.hideAsync();
+    }
+  }, [loaded]);
+
   useEffect(() => {
     if (loaded) {
-      SplashScreen.hideAsync();
+      setTimeout(async () => {
+        await SplashScreen.hideAsync();
+      }, 1000);
     }
   }, [loaded]);
 
@@ -34,22 +42,28 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={DefaultTheme}>
-      <Stack
-        screenOptions={({ route }) => ({
-          headerShown: false,
-        })}
-      >
-        <Stack.Screen name="index" />
-        <Stack.Screen name="team/index" />
-        <Stack.Screen name="team/create" />
-        <Stack.Screen name="team/[id]/index" />
-        <Stack.Screen name="team/[id]/roster" />
-        <Stack.Screen name="events/index" />
-        <Stack.Screen name="profile/index" />
-        <Stack.Screen name="team/edit/[id]" />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+      <ThemeProvider value={DefaultTheme}>
+        <Stack
+          screenOptions={({ route }) => ({
+            headerShown: false,
+          })}
+        >
+          <Stack.Screen name="index" />
+          <Stack.Screen name="team/index" />
+          <Stack.Screen name="team/create" />
+          <Stack.Screen name="team/[id]/index" />
+          <Stack.Screen name="team/[id]/roster" />
+          <Stack.Screen name="events/index" />
+          <Stack.Screen name="profile/index" />
+          <Stack.Screen name="profile/edit" />
+          <Stack.Screen name="profile/settings" />
+          <Stack.Screen name="profile/privacy" />
+          <Stack.Screen name="profile/help" />
+          <Stack.Screen name="team/edit/[id]" />
+        </Stack>
+        <StatusBar style="auto" />
+      </ThemeProvider>
+    </View>
   );
 }

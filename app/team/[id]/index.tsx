@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from "react-native";
+import ShareModal from "../../components/ShareModal";
 import { useLocalSearchParams } from "expo-router";
 import { Image } from "expo-image";
 import { StatusBar } from "expo-status-bar";
@@ -193,7 +194,10 @@ const TeamProfile = () => {
           </TouchableOpacity>
           <Text className="text-xl font-bold flex-1">Team Profile</Text>
           {teamData.isAdmin && (
-            <TouchableOpacity className="mr-2">
+            <TouchableOpacity
+              className="mr-2"
+              onPress={() => router.push(`/team/edit/${id}`)}
+            >
               <Edit size={20} color="#3b82f6" />
             </TouchableOpacity>
           )}
@@ -288,6 +292,12 @@ const TeamProfile = () => {
           {renderTabContent()}
         </ScrollView>
       </View>
+      {/* Share Modal */}
+      <ShareModal
+        visible={shareModalVisible}
+        onClose={() => setShareModalVisible(false)}
+        teamName={teamData.name}
+      />
     </SafeAreaView>
   );
 };
