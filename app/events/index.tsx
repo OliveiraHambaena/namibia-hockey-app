@@ -1,5 +1,5 @@
-import React from "react";
-import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import React, { useState } from "react";
+import { View, Text, ScrollView, TouchableOpacity, Modal } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { ArrowLeft, Calendar, Filter } from "lucide-react-native";
