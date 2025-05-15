@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   TextInput,
+  Modal,
+  Linking,
 } from "react-native";
 import { useRouter } from "expo-router";
 import {

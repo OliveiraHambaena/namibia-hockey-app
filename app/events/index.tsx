@@ -8,7 +8,6 @@ export default function EventsScreen() {
   const router = useRouter();
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [activeFilter, setActiveFilter] = useState(null);
-  const allEvents = events;
 
   // Mock events data
   const events = [
@@ -95,8 +94,8 @@ export default function EventsScreen() {
       {/* Events List */}
       <ScrollView className="flex-1 p-4">
         {(activeFilter
-          ? allEvents.filter((event) => event.type === activeFilter)
-          : allEvents
+          ? events.filter((event) => event.type === activeFilter)
+          : events
         ).map((event) => (
           <TouchableOpacity
             key={event.id}
