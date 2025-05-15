@@ -72,13 +72,19 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          <TouchableOpacity className="p-4 flex-row items-center border-b border-gray-100">
+          <TouchableOpacity
+            className="p-4 flex-row items-center border-b border-gray-100"
+            onPress={() => router.push("/profile/edit")}
+          >
             <User size={20} color="#4B5563" />
             <Text className="text-gray-800 ml-3 flex-1">Edit Profile</Text>
             <ChevronRight size={18} color="#9CA3AF" />
           </TouchableOpacity>
 
-          <TouchableOpacity className="p-4 flex-row items-center border-b border-gray-100">
+          <TouchableOpacity
+            className="p-4 flex-row items-center border-b border-gray-100"
+            onPress={() => router.push("/profile/settings")}
+          >
             <Settings size={20} color="#4B5563" />
             <Text className="text-gray-800 ml-3 flex-1">Settings</Text>
             <ChevronRight size={18} color="#9CA3AF" />

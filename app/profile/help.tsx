@@ -144,6 +144,109 @@ export default function HelpSupportScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Live Chat Modal */}
+      <Modal
+        visible={showLiveChat}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowLiveChat(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white rounded-t-xl p-4">
+            <View className="w-16 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
+            <Text className="text-xl font-bold mb-4">Live Chat</Text>
+
+            <View className="bg-gray-100 rounded-lg p-4 mb-4">
+              <Text className="text-gray-800 font-medium">Support Agent</Text>
+              <Text className="text-gray-600 mt-1">
+                Hello! How can I help you today?
+              </Text>
+              <Text className="text-gray-400 text-xs mt-1">Just now</Text>
+            </View>
+
+            <View className="flex-row mb-4">
+              <TextInput
+                className="flex-1 bg-gray-100 rounded-lg p-3 mr-2"
+                placeholder="Type your message..."
+              />
+              <TouchableOpacity className="bg-blue-600 rounded-lg p-3 items-center justify-center">
+                <Send size={20} color="white" />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              className="bg-gray-200 py-3 rounded-lg items-center"
+              onPress={() => setShowLiveChat(false)}
+            >
+              <Text className="text-gray-800 font-medium">Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* User Guide Modal */}
+      <Modal
+        visible={showUserGuide}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowUserGuide(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white rounded-t-xl p-4 h-3/4">
+            <View className="w-16 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-xl font-bold">User Guide</Text>
+              <TouchableOpacity onPress={() => setShowUserGuide(false)}>
+                <X size={24} color="#4B5563" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView className="flex-1">
+              <Text className="text-lg font-bold mb-2">Getting Started</Text>
+              <Text className="text-gray-700 mb-4">
+                Welcome to the Namibia Hockey Union app! This guide will help
+                you navigate through the various features and functionalities of
+                the application.
+              </Text>
+
+              <Text className="text-lg font-bold mb-2">Team Registration</Text>
+              <Text className="text-gray-700 mb-4">
+                To register a new team, navigate to the Teams tab and tap on the
+                + button at the bottom right corner. Fill in all the required
+                information about your team and submit for approval.
+              </Text>
+
+              <Text className="text-lg font-bold mb-2">
+                Managing Team Members
+              </Text>
+              <Text className="text-gray-700 mb-4">
+                Once your team is approved, you can manage team members by going
+                to your team profile and selecting the Players tab. Here you can
+                invite new players, approve pending requests, and manage
+                existing members.
+              </Text>
+
+              <Text className="text-lg font-bold mb-2">
+                Events and Tournaments
+              </Text>
+              <Text className="text-gray-700 mb-4">
+                Stay updated with all hockey events by checking the Events tab.
+                You can filter events by type (matches, tournaments, camps) to
+                find what you're interested in.
+              </Text>
+
+              <Text className="text-lg font-bold mb-2">Account Settings</Text>
+              <Text className="text-gray-700 mb-4">
+                Manage your profile information, notification preferences, and
+                privacy settings through the Profile tab. You can update your
+                personal information, change your password, and adjust
+                notification settings.
+              </Text>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

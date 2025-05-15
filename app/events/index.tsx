@@ -107,6 +107,78 @@ export default function EventsScreen() {
           </TouchableOpacity>
         ))}
       </ScrollView>
+
+      {/* Filter Modal */}
+      <Modal
+        transparent={true}
+        visible={filterModalVisible}
+        animationType="fade"
+        onRequestClose={() => setFilterModalVisible(false)}
+      >
+        <TouchableOpacity
+          className="flex-1 bg-black/30 justify-start items-end"
+          activeOpacity={1}
+          onPress={() => setFilterModalVisible(false)}
+        >
+          <View className="bg-white w-56 mt-24 mr-4 rounded-lg shadow-lg overflow-hidden">
+            <Text className="p-3 font-bold text-gray-800 border-b border-gray-100">
+              Filter Events
+            </Text>
+
+            <TouchableOpacity
+              className="p-3 border-b border-gray-100 flex-row justify-between items-center"
+              onPress={() => {
+                setActiveFilter(null);
+                setFilterModalVisible(false);
+              }}
+            >
+              <Text className="text-gray-800">All Events</Text>
+              {activeFilter === null && (
+                <Text className="text-blue-600">✓</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              className="p-3 border-b border-gray-100 flex-row justify-between items-center"
+              onPress={() => {
+                setActiveFilter("match");
+                setFilterModalVisible(false);
+              }}
+            >
+              <Text className="text-gray-800">Matches</Text>
+              {activeFilter === "match" && (
+                <Text className="text-blue-600">✓</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              className="p-3 border-b border-gray-100 flex-row justify-between items-center"
+              onPress={() => {
+                setActiveFilter("tournament");
+                setFilterModalVisible(false);
+              }}
+            >
+              <Text className="text-gray-800">Tournaments</Text>
+              {activeFilter === "tournament" && (
+                <Text className="text-blue-600">✓</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              className="p-3 flex-row justify-between items-center"
+              onPress={() => {
+                setActiveFilter("camp");
+                setFilterModalVisible(false);
+              }}
+            >
+              <Text className="text-gray-800">Camps</Text>
+              {activeFilter === "camp" && (
+                <Text className="text-blue-600">✓</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
