@@ -6,6 +6,9 @@ import { ArrowLeft, Calendar, Filter } from "lucide-react-native";
 
 export default function EventsScreen() {
   const router = useRouter();
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [activeFilter, setActiveFilter] = useState(null);
+  const allEvents = events;
 
   // Mock events data
   const events = [
@@ -57,7 +60,10 @@ export default function EventsScreen() {
           </TouchableOpacity>
           <Text className="text-white text-xl font-bold">Events</Text>
           <View className="flex-1" />
-          <TouchableOpacity className="p-2">
+          <TouchableOpacity
+            className="p-2"
+            onPress={() => setFilterModalVisible(true)}
+          >
             <Filter size={20} color="white" />
           </TouchableOpacity>
         </View>
@@ -73,9 +79,25 @@ export default function EventsScreen() {
         </View>
       </View>
 
+      {/* Filter indicator */}
+      {activeFilter && (
+        <View className="flex-row justify-between items-center px-4 py-2 bg-gray-100">
+          <Text className="text-gray-800">
+            Filtered by:{" "}
+            <Text className="font-bold capitalize">{activeFilter}</Text>
+          </Text>
+          <TouchableOpacity onPress={() => setActiveFilter(null)}>
+            <Text className="text-blue-600">Clear</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Events List */}
       <ScrollView className="flex-1 p-4">
-        {events.map((event) => (
+        {(activeFilter
+          ? allEvents.filter((event) => event.type === activeFilter)
+          : allEvents
+        ).map((event) => (
           <TouchableOpacity
             key={event.id}
             className="bg-white rounded-lg shadow-sm mb-4 overflow-hidden border border-gray-100"

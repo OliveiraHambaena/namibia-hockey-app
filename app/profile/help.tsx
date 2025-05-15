@@ -19,6 +19,8 @@ import {
 export default function HelpSupportScreen() {
   const router = useRouter();
   const [message, setMessage] = React.useState("");
+  const [showLiveChat, setShowLiveChat] = useState(false);
+  const [showUserGuide, setShowUserGuide] = useState(false);
 
   // Mock FAQ data
   const faqs = [
@@ -126,19 +128,28 @@ export default function HelpSupportScreen() {
             Additional Support
           </Text>
 
-          <TouchableOpacity className="p-4 flex-row items-center border-b border-gray-100">
+          <TouchableOpacity
+            className="p-4 flex-row items-center border-b border-gray-100"
+            onPress={() => Linking.openURL("tel:+26461234567")}
+          >
             <Phone size={20} color="#4B5563" />
             <Text className="text-gray-800 ml-3">
               Call Support: +264 61 123 4567
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity className="p-4 flex-row items-center border-b border-gray-100">
+          <TouchableOpacity
+            className="p-4 flex-row items-center border-b border-gray-100"
+            onPress={() => setShowLiveChat(true)}
+          >
             <MessageCircle size={20} color="#4B5563" />
             <Text className="text-gray-800 ml-3">Live Chat</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity className="p-4 flex-row items-center">
+          <TouchableOpacity
+            className="p-4 flex-row items-center"
+            onPress={() => setShowUserGuide(true)}
+          >
             <FileText size={20} color="#4B5563" />
             <Text className="text-gray-800 ml-3">User Guide</Text>
           </TouchableOpacity>
@@ -198,7 +209,7 @@ export default function HelpSupportScreen() {
             <View className="flex-row justify-between items-center mb-4">
               <Text className="text-xl font-bold">User Guide</Text>
               <TouchableOpacity onPress={() => setShowUserGuide(false)}>
-                <X size={24} color="#4B5563" />
+                <ArrowLeft size={24} color="#4B5563" />
               </TouchableOpacity>
             </View>
 
