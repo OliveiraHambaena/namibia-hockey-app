@@ -15,28 +15,52 @@ interface ShareModalProps {
 }
 
 const ShareModal = ({ visible, onClose, teamName }: ShareModalProps) => {
+  // Generate a shareable link for the team
+  const getShareableLink = () => {
+    return `https://namibiahockey.org/team/${teamName.replace(/\s+/g, "-").toLowerCase()}`;
+  };
+
   const shareOptions = [
     {
       icon: <Copy size={20} color="#4B5563" />,
       label: "Copy Link",
-      onPress: () => {
-        console.log("Link copied");
-        onClose();
+      onPress: async () => {
+        try {
+          await Clipboard.setStringAsync(getShareableLink());
+          Alert.alert("Success", "Link copied to clipboard!");
+          onClose();
+        } catch (error) {
+          Alert.alert("Error", "Failed to copy link to clipboard");
+        }
       },
     },
     {
       icon: <Mail size={20} color="#4B5563" />,
       label: "Email",
-      onPress: () => {
-        console.log("Share via email");
+      onPress: async () => {
+        const url = `mailto:?subject=Check out ${teamName} on Namibia Hockey Union&body=I thought you might be interested in checking out ${teamName}: ${getShareableLink()}`;
+        const canOpen = await Linking.canOpenURL(url);
+
+        if (canOpen) {
+          await Linking.openURL(url);
+        } else {
+          Alert.alert("Error", "Could not open email app");
+        }
         onClose();
       },
     },
     {
       icon: <MessageSquare size={20} color="#4B5563" />,
       label: "Message",
-      onPress: () => {
-        console.log("Share via message");
+      onPress: async () => {
+        const url = `sms:?body=Check out ${teamName} on Namibia Hockey Union: ${getShareableLink()}`;
+        const canOpen = await Linking.canOpenURL(url);
+
+        if (canOpen) {
+          await Linking.openURL(url);
+        } else {
+          Alert.alert("Error", "Could not open messaging app");
+        }
         onClose();
       },
     },

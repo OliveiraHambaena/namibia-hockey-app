@@ -30,14 +30,18 @@ export default function SettingsScreen() {
           className="bg-blue-600 py-3 rounded-lg items-center mb-4"
           onPress={() => router.push("/profile/edit")}
         >
-          <Text className="text-white font-semibold text-base">Edit Profile</Text>
+          <Text className="text-white font-semibold text-base">
+            Edit Profile
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           className="bg-gray-100 py-3 rounded-lg items-center"
           onPress={() => router.push("/profile/settings")}
         >
-          <Text className="text-blue-600 font-semibold text-base">Settings</Text>
+          <Text className="text-blue-600 font-semibold text-base">
+            Settings
+          </Text>
         </TouchableOpacity>
 
         <View className="bg-white rounded-lg shadow-sm mb-4 overflow-hidden">
@@ -50,7 +54,7 @@ export default function SettingsScreen() {
             <Text className="text-gray-800 ml-3 flex-1">Dark Mode</Text>
             <Switch
               value={darkMode}
-              onValueChange={setDarkMode}
+              onValueChange={handleDarkModeToggle}
               trackColor={{ false: "#D1D5DB", true: "#93C5FD" }}
               thumbColor={darkMode ? "#2563EB" : "#9CA3AF"}
             />

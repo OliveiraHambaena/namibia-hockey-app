@@ -43,7 +43,7 @@ const MenuModal = ({ visible, onClose }: MenuModalProps) => {
       label: "About",
       onPress: () => {
         onClose();
-        console.log("About pressed");
+        router.push("/profile/about");
       },
     },
     {
