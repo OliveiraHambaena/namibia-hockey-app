@@ -12,6 +12,11 @@ export default function SettingsScreen() {
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [language, setLanguage] = useState("English");
 
+  // Handle dark mode toggle
+  const handleDarkModeToggle = (value) => {
+    setDarkMode(value);
+  };
+
   return (
     <View className="flex-1 bg-gray-50">
       {/* Header */}
@@ -63,8 +68,16 @@ export default function SettingsScreen() {
           <TouchableOpacity className="p-4 flex-row items-center border-b border-gray-100">
             <Globe size={20} color="#4B5563" />
             <View className="flex-1 ml-3">
-              <Text className="text-gray-800">Language</Text>
-              <Text className="text-gray-500 text-sm">{language}</Text>
+              <Text
+                className={`${isDarkMode ? "text-white" : "text-gray-800"}`}
+              >
+                Language
+              </Text>
+              <Text
+                className={`${isDarkMode ? "text-gray-400" : "text-gray-500"} text-sm`}
+              >
+                {language}
+              </Text>
             </View>
           </TouchableOpacity>
         </View>
