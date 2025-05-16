@@ -49,6 +49,7 @@ export default function ProfileScreen() {
             source={{ uri: user.avatar }}
             className="w-24 h-24 rounded-full bg-white"
             contentFit="cover"
+            style={{ width: 96, height: 96 }}
           />
           <Text className="text-white text-xl font-bold mt-3">{user.name}</Text>
           <Text className="text-white opacity-80">{user.role}</Text>

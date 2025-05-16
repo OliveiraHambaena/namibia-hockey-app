@@ -2,19 +2,20 @@ import React, { useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Switch } from "react-native";
 import { useRouter } from "expo-router";
 import { ArrowLeft, Globe, Bell, Moon, Smartphone } from "lucide-react-native";
+import { useTheme } from "../context/ThemeContext";
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { isDarkMode, toggleTheme } = useTheme();
 
   // Settings state
-  const [darkMode, setDarkMode] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [language, setLanguage] = useState("English");
 
   // Handle dark mode toggle
-  const handleDarkModeToggle = (value) => {
-    setDarkMode(value);
+  const handleDarkModeToggle = () => {
+    toggleTheme();
   };
 
   return (
@@ -58,10 +59,10 @@ export default function SettingsScreen() {
             <Moon size={20} color="#4B5563" />
             <Text className="text-gray-800 ml-3 flex-1">Dark Mode</Text>
             <Switch
-              value={darkMode}
+              value={isDarkMode}
               onValueChange={handleDarkModeToggle}
               trackColor={{ false: "#D1D5DB", true: "#93C5FD" }}
-              thumbColor={darkMode ? "#2563EB" : "#9CA3AF"}
+              thumbColor={isDarkMode ? "#2563EB" : "#9CA3AF"}
             />
           </View>
 

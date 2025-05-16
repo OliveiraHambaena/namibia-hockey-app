@@ -51,29 +51,27 @@ function RootLayoutNav() {
 
   return (
     <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
-      <ThemeProvider value={DefaultTheme}>
-        <Stack
-          screenOptions={({ route }) => ({
-            headerShown: false,
-          })}
-        >
-          <Stack.Screen name="index" />
-          <Stack.Screen name="auth/login" />
-          <Stack.Screen name="auth/register" />
-          <Stack.Screen name="team/index" />
-          <Stack.Screen name="team/create" />
-          <Stack.Screen name="team/[id]/index" />
-          <Stack.Screen name="team/[id]/roster" />
-          <Stack.Screen name="events/index" />
-          <Stack.Screen name="profile/index" />
-          <Stack.Screen name="profile/edit" />
-          <Stack.Screen name="profile/settings" />
-          <Stack.Screen name="profile/privacy" />
-          <Stack.Screen name="profile/help" />
-          <Stack.Screen name="team/edit/[id]" />
-        </Stack>
-        <StatusBar style="auto" />
-      </ThemeProvider>
+      <Stack
+        screenOptions={({ route }) => ({
+          headerShown: false,
+        })}
+      >
+        <Stack.Screen name="index" />
+        <Stack.Screen name="auth/login" />
+        <Stack.Screen name="auth/register" />
+        <Stack.Screen name="team/index" />
+        <Stack.Screen name="team/create" />
+        <Stack.Screen name="team/[id]/index" />
+        <Stack.Screen name="team/[id]/roster" />
+        <Stack.Screen name="events/index" />
+        <Stack.Screen name="profile/index" />
+        <Stack.Screen name="profile/edit" />
+        <Stack.Screen name="profile/settings" />
+        <Stack.Screen name="profile/privacy" />
+        <Stack.Screen name="profile/help" />
+        <Stack.Screen name="team/edit/[id]" />
+      </Stack>
+      <StatusBar style="auto" />
     </View>
   );
 }

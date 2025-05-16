@@ -82,6 +82,7 @@ export default function HomeScreen() {
           source={require("../assets/images/NamibiaHockey app.jpeg")}
           className="w-24 h-24 rounded-full bg-white mb-4"
           contentFit="cover"
+          style={{ width: 96, height: 96 }}
         />
         <Text className="text-2xl font-bold text-white mb-1">
           Namibia Hockey Union
