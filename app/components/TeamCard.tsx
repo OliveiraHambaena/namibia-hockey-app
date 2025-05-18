@@ -57,7 +57,9 @@ const TeamCard = ({
                   : "text-red-800"
             }`}
           >
-            {approvalStatus.charAt(0).toUpperCase() + approvalStatus.slice(1)}
+            {approvalStatus
+              ? approvalStatus.charAt(0).toUpperCase() + approvalStatus.slice(1)
+              : "Unknown"}
           </Text>
         </View>
       </View>

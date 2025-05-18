@@ -5,7 +5,10 @@ import {
   Modal,
   TouchableOpacity,
   TouchableWithoutFeedback,
+  Alert,
+  Linking,
 } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { Link, Copy, Mail, MessageSquare } from "lucide-react-native";
 
 interface ShareModalProps {
