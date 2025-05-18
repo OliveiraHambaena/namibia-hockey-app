@@ -16,6 +16,7 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
 
   const handleRegister = () => {
     // Here you would implement actual registration logic
