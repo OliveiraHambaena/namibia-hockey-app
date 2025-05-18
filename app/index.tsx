@@ -65,7 +65,7 @@ export default function HomeScreen() {
 
         {/* Footer */}
         <View className="p-6 items-center">
-          <TouchableOpacity onPress={() => setIsLoggedIn(true)}>
+          <TouchableOpacity onPress={() => router.push("/team")}>
             <Text className="text-gray-500 text-sm">Continue as Guest</Text>
           </TouchableOpacity>
         </View>

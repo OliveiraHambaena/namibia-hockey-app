@@ -69,6 +69,12 @@ export default function LoginScreen() {
         </TouchableOpacity>
       </View>
 
+      {errorMsg && (
+        <View className="mb-4 p-3 bg-red-50 rounded-lg border border-red-200">
+          <Text className="text-red-600">{errorMsg}</Text>
+        </View>
+      )}
+
       <TouchableOpacity
         className="bg-blue-600 py-4 rounded-lg items-center mb-6"
         onPress={handleLogin}
