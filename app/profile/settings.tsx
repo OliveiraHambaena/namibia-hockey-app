@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, Switch } from "react-native";
 import { useRouter } from "expo-router";
 import { ArrowLeft, Globe, Bell, Moon, Smartphone } from "lucide-react-native";
 import { useTheme } from "../context/ThemeContext";
+import { ThemedView, ThemedText } from "../components/ThemedView";
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -19,7 +20,11 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <ThemedView
+      lightBgColor="bg-gray-50"
+      darkBgColor="bg-gray-900"
+      className="flex-1"
+    >
       {/* Header */}
       <View className="bg-blue-600 pt-14 pb-4 px-4">
         <View className="flex-row items-center mb-4">
@@ -50,93 +55,169 @@ export default function SettingsScreen() {
           </Text>
         </TouchableOpacity>
 
-        <View className="bg-white rounded-lg shadow-sm mb-4 overflow-hidden">
-          <Text className="p-4 text-lg font-bold text-gray-800 border-b border-gray-100">
+        <ThemedView
+          lightBgColor="bg-white"
+          darkBgColor="bg-gray-800"
+          className="rounded-lg shadow-sm mb-4 overflow-hidden"
+        >
+          <ThemedText
+            className="p-4 text-lg font-bold border-b border-gray-100"
+            lightTextColor="text-gray-800"
+            darkTextColor="text-white"
+          >
             Appearance
-          </Text>
+          </ThemedText>
 
-          <View className="p-4 flex-row items-center border-b border-gray-100">
-            <Moon size={20} color="#4B5563" />
-            <Text className="text-gray-800 ml-3 flex-1">Dark Mode</Text>
+          <ThemedView
+            lightBgColor="bg-white"
+            darkBgColor="bg-gray-800"
+            className="p-4 flex-row items-center border-b border-gray-100"
+          >
+            <Moon size={20} color={isDarkMode ? "#e5e7eb" : "#4B5563"} />
+            <ThemedText
+              className="ml-3 flex-1"
+              lightTextColor="text-gray-800"
+              darkTextColor="text-white"
+            >
+              Dark Mode
+            </ThemedText>
             <Switch
               value={isDarkMode}
               onValueChange={handleDarkModeToggle}
               trackColor={{ false: "#D1D5DB", true: "#93C5FD" }}
               thumbColor={isDarkMode ? "#2563EB" : "#9CA3AF"}
             />
-          </View>
+          </ThemedView>
 
           <TouchableOpacity className="p-4 flex-row items-center border-b border-gray-100">
-            <Globe size={20} color="#4B5563" />
+            <Globe size={20} color={isDarkMode ? "#e5e7eb" : "#4B5563"} />
             <View className="flex-1 ml-3">
-              <Text
-                className={`${isDarkMode ? "text-white" : "text-gray-800"}`}
+              <ThemedText
+                lightTextColor="text-gray-800"
+                darkTextColor="text-white"
               >
                 Language
-              </Text>
-              <Text
-                className={`${isDarkMode ? "text-gray-400" : "text-gray-500"} text-sm`}
+              </ThemedText>
+              <ThemedText
+                className="text-sm"
+                lightTextColor="text-gray-500"
+                darkTextColor="text-gray-400"
               >
                 {language}
-              </Text>
+              </ThemedText>
             </View>
           </TouchableOpacity>
-        </View>
+        </ThemedView>
 
-        <View className="bg-white rounded-lg shadow-sm mb-4 overflow-hidden">
-          <Text className="p-4 text-lg font-bold text-gray-800 border-b border-gray-100">
+        <ThemedView
+          lightBgColor="bg-white"
+          darkBgColor="bg-gray-800"
+          className="rounded-lg shadow-sm mb-4 overflow-hidden"
+        >
+          <ThemedText
+            className="p-4 text-lg font-bold border-b border-gray-100"
+            lightTextColor="text-gray-800"
+            darkTextColor="text-white"
+          >
             Notifications
-          </Text>
+          </ThemedText>
 
-          <View className="p-4 flex-row items-center border-b border-gray-100">
-            <Bell size={20} color="#4B5563" />
-            <Text className="text-gray-800 ml-3 flex-1">
+          <ThemedView
+            lightBgColor="bg-white"
+            darkBgColor="bg-gray-800"
+            className="p-4 flex-row items-center border-b border-gray-100"
+          >
+            <Bell size={20} color={isDarkMode ? "#e5e7eb" : "#4B5563"} />
+            <ThemedText
+              className="ml-3 flex-1"
+              lightTextColor="text-gray-800"
+              darkTextColor="text-white"
+            >
               Push Notifications
-            </Text>
+            </ThemedText>
             <Switch
               value={notifications}
               onValueChange={setNotifications}
               trackColor={{ false: "#D1D5DB", true: "#93C5FD" }}
               thumbColor={notifications ? "#2563EB" : "#9CA3AF"}
             />
-          </View>
+          </ThemedView>
 
-          <View className="p-4 flex-row items-center">
-            <Smartphone size={20} color="#4B5563" />
-            <Text className="text-gray-800 ml-3 flex-1">Email Alerts</Text>
+          <ThemedView
+            lightBgColor="bg-white"
+            darkBgColor="bg-gray-800"
+            className="p-4 flex-row items-center"
+          >
+            <Smartphone size={20} color={isDarkMode ? "#e5e7eb" : "#4B5563"} />
+            <ThemedText
+              className="ml-3 flex-1"
+              lightTextColor="text-gray-800"
+              darkTextColor="text-white"
+            >
+              Email Alerts
+            </ThemedText>
             <Switch
               value={emailAlerts}
               onValueChange={setEmailAlerts}
               trackColor={{ false: "#D1D5DB", true: "#93C5FD" }}
               thumbColor={emailAlerts ? "#2563EB" : "#9CA3AF"}
             />
-          </View>
-        </View>
+          </ThemedView>
+        </ThemedView>
 
-        <View className="bg-white rounded-lg shadow-sm mb-4 overflow-hidden">
-          <Text className="p-4 text-lg font-bold text-gray-800 border-b border-gray-100">
+        <ThemedView
+          lightBgColor="bg-white"
+          darkBgColor="bg-gray-800"
+          className="rounded-lg shadow-sm mb-4 overflow-hidden"
+        >
+          <ThemedText
+            className="p-4 text-lg font-bold border-b border-gray-100"
+            lightTextColor="text-gray-800"
+            darkTextColor="text-white"
+          >
             About
-          </Text>
+          </ThemedText>
 
           <TouchableOpacity className="p-4 border-b border-gray-100">
-            <Text className="text-gray-800">Terms of Service</Text>
+            <ThemedText
+              lightTextColor="text-gray-800"
+              darkTextColor="text-white"
+            >
+              Terms of Service
+            </ThemedText>
           </TouchableOpacity>
 
           <TouchableOpacity className="p-4 border-b border-gray-100">
-            <Text className="text-gray-800">Privacy Policy</Text>
+            <ThemedText
+              lightTextColor="text-gray-800"
+              darkTextColor="text-white"
+            >
+              Privacy Policy
+            </ThemedText>
           </TouchableOpacity>
 
           <TouchableOpacity className="p-4">
-            <Text className="text-gray-800">App Version 1.0.0</Text>
+            <ThemedText
+              lightTextColor="text-gray-800"
+              darkTextColor="text-white"
+            >
+              App Version 1.0.0
+            </ThemedText>
           </TouchableOpacity>
-        </View>
+        </ThemedView>
 
-        <TouchableOpacity className="bg-red-50 rounded-lg p-4 mb-6">
+        <TouchableOpacity
+          className={
+            isDarkMode
+              ? "bg-red-900 rounded-lg p-4 mb-6"
+              : "bg-red-50 rounded-lg p-4 mb-6"
+          }
+        >
           <Text className="text-red-500 text-center font-medium">
             Clear App Data
           </Text>
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </ThemedView>
   );
 }
