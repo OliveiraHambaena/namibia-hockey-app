@@ -19,6 +19,16 @@ export default function HomeScreen() {
   }
 
   // If not logged in, show auth options
+  // Show loading indicator while checking auth state
+  if (isLoading && !showSplash) {
+    return (
+      <View className="flex-1 bg-white justify-center items-center">
+        <ActivityIndicator size="large" color="#3B82F6" />
+        <Text className="mt-4 text-gray-600">Loading...</Text>
+      </View>
+    );
+  }
+
   if (!isLoggedIn) {
     return (
       <View className="flex-1 bg-white">

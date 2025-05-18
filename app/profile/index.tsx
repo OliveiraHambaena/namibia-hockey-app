@@ -69,7 +69,7 @@ export default function ProfileScreen() {
             </View>
             <View>
               <Text className="text-gray-500 text-sm">Member Since</Text>
-              <Text className="text-gray-800">{user.memberSince}</Text>
+              <Text className="text-gray-800">{userData.memberSince}</Text>
             </View>
           </View>
 

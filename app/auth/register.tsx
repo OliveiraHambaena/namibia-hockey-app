@@ -102,10 +102,15 @@ export default function RegisterScreen() {
         )}
 
         <TouchableOpacity
-          className="bg-blue-600 py-4 rounded-lg items-center mb-6"
+          className={`bg-blue-600 py-4 rounded-lg items-center mb-6 ${isLoading ? "opacity-70" : ""}`}
           onPress={handleRegister}
+          disabled={isLoading}
         >
-          <Text className="text-white font-semibold text-base">Register</Text>
+          {isLoading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text className="text-white font-semibold text-base">Register</Text>
+          )}
         </TouchableOpacity>
 
         <View className="flex-row justify-center mb-4">

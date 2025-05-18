@@ -4,22 +4,48 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
+import { supabase } from "../lib/supabase";
 
-export default function LoginScreen() {
+export default function ForgotPasswordScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = () => {
-    // Here you would implement actual authentication logic
-    // For now, we'll just navigate to the home screen
-    router.replace("/");
+  const handleResetPassword = async () => {
+    if (!email) {
+      setErrorMsg("Please enter your email address");
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMsg("");
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${process.env.EXPO_PUBLIC_SUPABASE_URL}/auth/reset-password`,
+      });
+
+      if (error) {
+        setErrorMsg(error.message || "Failed to send reset email");
+      } else {
+        Alert.alert(
+          "Reset Email Sent",
+          "Check your email for a link to reset your password.",
+          [{ text: "OK", onPress: () => router.push("/auth/login") }],
+        );
+      }
+    } catch (error: any) {
+      setErrorMsg(error.message || "An unexpected error occurred");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -38,9 +64,9 @@ export default function LoginScreen() {
           className="w-32 h-32 rounded-full mb-4"
           contentFit="cover"
         />
-        <Text className="text-2xl font-bold text-gray-800">Welcome Back</Text>
+        <Text className="text-2xl font-bold text-gray-800">Reset Password</Text>
         <Text className="text-gray-500 text-center mt-2">
-          Sign in to access your hockey team account
+          Enter your email to receive a password reset link
         </Text>
       </View>
 
@@ -56,23 +82,6 @@ export default function LoginScreen() {
         />
       </View>
 
-      <View className="mb-8">
-        <Text className="text-gray-700 mb-2 font-medium">Password</Text>
-        <TextInput
-          className="bg-gray-100 p-4 rounded-lg text-gray-800"
-          placeholder="Enter your password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-        <TouchableOpacity
-          className="self-end mt-2"
-          onPress={() => router.push("/auth/forgot-password")}
-        >
-          <Text className="text-blue-500">Forgot Password?</Text>
-        </TouchableOpacity>
-      </View>
-
       {errorMsg && (
         <View className="mb-4 p-3 bg-red-50 rounded-lg border border-red-200">
           <Text className="text-red-600">{errorMsg}</Text>
@@ -80,16 +89,23 @@ export default function LoginScreen() {
       )}
 
       <TouchableOpacity
-        className="bg-blue-600 py-4 rounded-lg items-center mb-6"
-        onPress={handleLogin}
+        className={`bg-blue-600 py-4 rounded-lg items-center mb-6 ${isLoading ? "opacity-70" : ""}`}
+        onPress={handleResetPassword}
+        disabled={isLoading}
       >
-        <Text className="text-white font-semibold text-base">Sign In</Text>
+        {isLoading ? (
+          <ActivityIndicator color="white" />
+        ) : (
+          <Text className="text-white font-semibold text-base">
+            Send Reset Link
+          </Text>
+        )}
       </TouchableOpacity>
 
       <View className="flex-row justify-center">
-        <Text className="text-gray-600">Don't have an account? </Text>
-        <TouchableOpacity onPress={() => router.push("/auth/register")}>
-          <Text className="text-blue-600 font-semibold">Register</Text>
+        <Text className="text-gray-600">Remember your password? </Text>
+        <TouchableOpacity onPress={() => router.push("/auth/login")}>
+          <Text className="text-blue-600 font-semibold">Sign In</Text>
         </TouchableOpacity>
       </View>
     </View>
