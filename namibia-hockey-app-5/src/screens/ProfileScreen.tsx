@@ -1,0 +1,695 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Platform,
+  Image,
+  useWindowDimensions,
+  Alert,
+} from 'react-native';
+import {
+  Avatar,
+  Button,
+  Card,
+  Divider,
+  IconButton,
+  List,
+  Switch,
+  Badge,
+  Chip,
+  SegmentedButtons,
+  Portal,
+  Dialog,
+} from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
+
+const ProfileScreen = ({ navigation }: { navigation: any }) => {
+  // Get screen dimensions for responsive design
+  const { width, height } = useWindowDimensions();
+  const isTablet = width > 768;
+
+  // State for active tab
+  const [activeTab, setActiveTab] = useState('stats');
+  
+  // State for logout dialog
+  const [logoutDialogVisible, setLogoutDialogVisible] = useState(false);
+
+  // Mock user data
+  const userData = {
+    name: 'Alex Johnson',
+    username: 'alexj88',
+    avatar: 'https://via.placeholder.com/150/1565C0/FFFFFF?text=AJ',
+    role: 'Player',
+    team: 'Thunderbolts',
+    position: 'Center',
+    jerseyNumber: '88',
+    joinDate: 'May 2023',
+    email: 'alex.johnson@example.com',
+    phone: '(555) 123-4567',
+    bio: 'Hockey enthusiast with 10+ years of experience. Team captain for 3 seasons and passionate about developing youth talent in the sport.',
+    stats: {
+      games: 42,
+      goals: 18,
+      assists: 24,
+      points: 42,
+      penaltyMinutes: 12,
+    },
+    achievements: [
+      { id: '1', title: 'MVP', season: '2024', icon: 'trophy' },
+      { id: '2', title: 'Most Goals', season: '2023', icon: 'hockey-puck' },
+      { id: '3', title: 'Team Captain', season: '2022-2024', icon: 'shield' },
+    ],
+    activities: [
+      { id: '1', type: 'Game', title: 'vs Ice Hawks', date: 'May 15, 2025', result: 'Win 4-2', stats: '2G, 1A' },
+      { id: '2', type: 'Practice', title: 'Team Training', date: 'May 12, 2025', duration: '2h' },
+      { id: '3', type: 'Game', title: 'vs Polar Bears', date: 'May 8, 2025', result: 'Loss 2-3', stats: '0G, 2A' },
+      { id: '4', type: 'Event', title: 'Youth Camp Volunteer', date: 'May 5, 2025', duration: '3h' },
+    ],
+    preferences: {
+      notifications: true,
+      darkMode: false,
+      publicProfile: true,
+      language: 'English',
+    }
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    setLogoutDialogVisible(false);
+    // In a real app, you would call a logout function here
+    // Navigate to the sign in screen
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'SignIn' }],
+    });
+  };
+
+  // Render stats section
+  const renderStats = () => (
+    <View style={styles.statsContainer}>
+      <View style={styles.statsRow}>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{userData.stats.games}</Text>
+          <Text style={styles.statLabel}>Games</Text>
+        </View>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{userData.stats.goals}</Text>
+          <Text style={styles.statLabel}>Goals</Text>
+        </View>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{userData.stats.assists}</Text>
+          <Text style={styles.statLabel}>Assists</Text>
+        </View>
+      </View>
+      <View style={styles.statsRow}>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{userData.stats.points}</Text>
+          <Text style={styles.statLabel}>Points</Text>
+        </View>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{userData.stats.penaltyMinutes}</Text>
+          <Text style={styles.statLabel}>PIM</Text>
+        </View>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{(userData.stats.points / userData.stats.games).toFixed(1)}</Text>
+          <Text style={styles.statLabel}>PPG</Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  // Render achievements section
+  const renderAchievements = () => (
+    <View style={styles.achievementsContainer}>
+      {userData.achievements.map((achievement) => (
+        <Card key={achievement.id} style={styles.achievementCard}>
+          <LinearGradient
+            colors={['#F5F5F5', '#FFFFFF']}
+            style={styles.achievementGradient}
+          >
+            <View style={styles.achievementIcon}>
+              <MaterialCommunityIcons name={achievement.icon as any} size={28} color="#1565C0" />
+            </View>
+            <View style={styles.achievementContent}>
+              <Text style={styles.achievementTitle}>{achievement.title}</Text>
+              <Text style={styles.achievementSeason}>{achievement.season}</Text>
+            </View>
+          </LinearGradient>
+        </Card>
+      ))}
+    </View>
+  );
+
+  // Render activities section
+  const renderActivities = () => (
+    <View style={styles.activitiesContainer}>
+      {userData.activities.map((activity) => (
+        <Card key={activity.id} style={styles.activityCard}>
+          <Card.Content style={styles.activityContent}>
+            <View style={styles.activityHeader}>
+              <View style={styles.activityTypeContainer}>
+                <Chip 
+                  style={[
+                    styles.activityTypeChip,
+                    activity.type === 'Game' && styles.gameChip,
+                    activity.type === 'Practice' && styles.practiceChip,
+                    activity.type === 'Event' && styles.eventChip,
+                  ]}
+                  textStyle={{ fontSize: 12 }}
+                >
+                  {activity.type}
+                </Chip>
+              </View>
+              <Text style={styles.activityDate}>{activity.date}</Text>
+            </View>
+            
+            <Text style={styles.activityTitle}>{activity.title}</Text>
+            
+            {activity.result && (
+              <View style={styles.activityDetail}>
+                <MaterialCommunityIcons name="scoreboard" size={16} color="#666" />
+                <Text style={styles.activityDetailText}>{activity.result}</Text>
+              </View>
+            )}
+            
+            {activity.stats && (
+              <View style={styles.activityDetail}>
+                <MaterialCommunityIcons name="chart-line" size={16} color="#666" />
+                <Text style={styles.activityDetailText}>{activity.stats}</Text>
+              </View>
+            )}
+            
+            {activity.duration && (
+              <View style={styles.activityDetail}>
+                <MaterialCommunityIcons name="clock-outline" size={16} color="#666" />
+                <Text style={styles.activityDetailText}>{activity.duration}</Text>
+              </View>
+            )}
+          </Card.Content>
+        </Card>
+      ))}
+    </View>
+  );
+
+  // Render settings section
+  const renderSettings = () => (
+    <View style={styles.settingsContainer}>
+      <List.Section>
+        <List.Subheader style={styles.settingsHeader}>Account Settings</List.Subheader>
+        
+        <List.Item
+          title="Edit Profile"
+          description="Change your personal information"
+          left={props => <List.Icon {...props} icon="account-edit" color="#1565C0" />}
+          right={props => <List.Icon {...props} icon="chevron-right" />}
+          onPress={() => {}}
+          style={styles.settingsItem}
+        />
+        
+        <List.Item
+          title="Change Password"
+          description="Update your security credentials"
+          left={props => <List.Icon {...props} icon="lock" color="#1565C0" />}
+          right={props => <List.Icon {...props} icon="chevron-right" />}
+          onPress={() => {}}
+          style={styles.settingsItem}
+        />
+        
+        <List.Subheader style={styles.settingsHeader}>Preferences</List.Subheader>
+        
+        <List.Item
+          title="Notifications"
+          description="Receive alerts and updates"
+          left={props => <List.Icon {...props} icon="bell" color="#1565C0" />}
+          right={() => (
+            <Switch
+              value={userData.preferences.notifications}
+              onValueChange={() => {}}
+              color="#1565C0"
+            />
+          )}
+          style={styles.settingsItem}
+        />
+        
+        <List.Item
+          title="Dark Mode"
+          description="Toggle light/dark appearance"
+          left={props => <List.Icon {...props} icon="theme-light-dark" color="#1565C0" />}
+          right={() => (
+            <Switch
+              value={userData.preferences.darkMode}
+              onValueChange={() => {}}
+              color="#1565C0"
+            />
+          )}
+          style={styles.settingsItem}
+        />
+        
+        <List.Item
+          title="Public Profile"
+          description="Allow others to view your profile"
+          left={props => <List.Icon {...props} icon="eye" color="#1565C0" />}
+          right={() => (
+            <Switch
+              value={userData.preferences.publicProfile}
+              onValueChange={() => {}}
+              color="#1565C0"
+            />
+          )}
+          style={styles.settingsItem}
+        />
+        
+        <List.Subheader style={styles.settingsHeader}>Support</List.Subheader>
+        
+        <List.Item
+          title="Help Center"
+          description="Get assistance and support"
+          left={props => <List.Icon {...props} icon="help-circle" color="#1565C0" />}
+          right={props => <List.Icon {...props} icon="chevron-right" />}
+          onPress={() => {}}
+          style={styles.settingsItem}
+        />
+        
+        <List.Item
+          title="About"
+          description="App version and information"
+          left={props => <List.Icon {...props} icon="information" color="#1565C0" />}
+          right={props => <List.Icon {...props} icon="chevron-right" />}
+          onPress={() => {}}
+          style={styles.settingsItem}
+        />
+        
+        <List.Item
+          title="Settings"
+          description="Advanced settings"
+          left={props => <List.Icon {...props} icon="cog" color="#1565C0" />}
+          right={props => <List.Icon {...props} icon="chevron-right" />}
+          onPress={() => navigation.navigate('Settings')}
+          style={styles.settingsItem}
+        />
+      </List.Section>
+    </View>
+  );
+
+  // Render the appropriate content based on the active tab
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'stats':
+        return renderStats();
+      case 'achievements':
+        return renderAchievements();
+      case 'activities':
+        return renderActivities();
+      case 'settings':
+        return renderSettings();
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <>
+      <View style={styles.container}>
+        <StatusBar style="light" />
+        
+        {/* Profile Header */}
+        <LinearGradient
+          colors={['#1565C0', '#0D47A1']}
+          style={styles.header}
+        >
+          {/* Header actions (back button and logout) */}
+          <View style={styles.headerActions}>
+            <IconButton
+              icon="arrow-left"
+              iconColor="white"
+              size={24}
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            />
+            <IconButton
+              icon="logout"
+              iconColor="white"
+              size={24}
+              style={styles.logoutIcon}
+              onPress={() => setLogoutDialogVisible(true)}
+            />
+          </View>
+          
+          <View style={styles.profileInfo}>
+            <Avatar.Image 
+              source={{ uri: userData.avatar }} 
+              size={isTablet ? 120 : 100} 
+              style={styles.avatar}
+            />
+            <View style={styles.userInfo}>
+              <Text style={styles.userName}>{userData.name}</Text>
+              <Text style={styles.userUsername}>@{userData.username}</Text>
+              
+              <View style={styles.userDetailsRow}>
+                <View style={styles.userDetailItem}>
+                  <MaterialCommunityIcons name="account-group" size={16} color="white" />
+                  <Text style={styles.userDetailText}>{userData.team}</Text>
+                </View>
+                
+                <View style={styles.userDetailItem}>
+                  <MaterialCommunityIcons name="hockey-puck" size={16} color="white" />
+                  <Text style={styles.userDetailText}>{userData.position} #{userData.jerseyNumber}</Text>
+                </View>
+                
+                <View style={styles.userDetailItem}>
+                  <MaterialCommunityIcons name="calendar" size={16} color="white" />
+                  <Text style={styles.userDetailText}>Since {userData.joinDate}</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+          
+          <View style={styles.bioContainer}>
+            <Text style={styles.bioText}>{userData.bio}</Text>
+          </View>
+        </LinearGradient>
+        
+        {/* Tabs */}
+        <View style={styles.tabContainer}>
+          <SegmentedButtons
+            value={activeTab}
+            onValueChange={setActiveTab}
+            buttons={[
+              { value: 'stats', label: 'Stats' },
+              { value: 'achievements', label: 'Achievements' },
+              { value: 'activities', label: 'Activities' },
+              { value: 'settings', label: 'Settings' },
+            ]}
+            style={styles.tabButtons}
+          />
+        </View>
+        
+        {/* Content */}
+        <ScrollView 
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {renderContent()}
+        </ScrollView>
+      </View>
+      
+      {/* Logout dialog */}
+      <Portal>
+        <Dialog
+          visible={logoutDialogVisible}
+          onDismiss={() => setLogoutDialogVisible(false)}
+          style={styles.logoutDialog}
+        >
+          <Dialog.Title>Sign Out</Dialog.Title>
+          <Dialog.Content>
+            <Text>Are you sure you want to sign out?</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setLogoutDialogVisible(false)}>Cancel</Button>
+            <Button onPress={handleLogout} textColor="#D32F2F">Sign Out</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+    </>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+  },
+  header: {
+    paddingTop: 60,
+    paddingBottom: 30,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+  },
+  headerActions: {
+    position: 'absolute',
+    top: 40,
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    zIndex: 10,
+    paddingTop: 10,
+  },
+  backButton: {
+    margin: 0,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    borderRadius: 20,
+  },
+  logoutIcon: {
+    margin: 0,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    borderRadius: 20,
+  },
+  profileInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    marginTop: 30,
+  },
+  avatar: {
+    backgroundColor: '#0D47A1',
+    borderWidth: 3,
+    borderColor: 'white',
+    marginRight: 16,
+  },
+  userInfo: {
+    flex: 1,
+    paddingTop: 10,
+  },
+  userName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 4,
+  },
+  userUsername: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: 12,
+  },
+  userDetailsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  userDetailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  userDetailText: {
+    color: 'white',
+    marginLeft: 6,
+    fontSize: 14,
+  },
+  bioContainer: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 10,
+  },
+  bioText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  tabContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    marginTop: -20,
+    zIndex: 1,
+  },
+  tabButtons: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    padding: 8,
+  },
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 40,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  seasonChip: {
+    backgroundColor: '#E3F2FD',
+  },
+  statsContainer: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 16,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1565C0',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  achievementsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  achievementCard: {
+    width: '48%',
+    marginBottom: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    elevation: 2,
+  },
+  achievementGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  achievementIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#E3F2FD',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  achievementContent: {
+    flex: 1,
+  },
+  achievementTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  achievementSeason: {
+    fontSize: 14,
+    color: '#666',
+  },
+  activitiesContainer: {
+    marginBottom: 20,
+  },
+  activityCard: {
+    marginBottom: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    elevation: 2,
+  },
+  activityContent: {
+    padding: 16,
+  },
+  activityHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  activityTypeContainer: {
+    flexDirection: 'row',
+  },
+  activityTypeChip: {
+    height: 28,
+  },
+  gameChip: {
+    backgroundColor: '#E3F2FD',
+  },
+  practiceChip: {
+    backgroundColor: '#E8F5E9',
+  },
+  eventChip: {
+    backgroundColor: '#FFF3E0',
+  },
+  activityDate: {
+    fontSize: 14,
+    color: '#666',
+  },
+  activityTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  activityDetail: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  activityDetailText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
+  },
+  settingsContainer: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 20,
+  },
+  settingsHeader: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1565C0',
+    paddingVertical: 8,
+  },
+  settingsItem: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  logoutDialog: {
+    borderRadius: 12,
+    backgroundColor: 'white',
+  },
+});
+
+export default ProfileScreen;
