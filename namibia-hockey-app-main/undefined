@@ -1,9 +1,0 @@
-import HomeScreen from "../../app/index";
-
-export default function HomeScreenStoryboard() {
-  return (
-    <div className="bg-white" style={{width: 390, height: 844}}>
-      <HomeScreen />
-    </div>
-  );
-}
