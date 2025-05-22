@@ -9,15 +9,21 @@ const SignUpScreen = ({ navigation }: { navigation: any }) => {
   const { width, height } = useWindowDimensions();
   const isTablet = width > 768;
   const { register, loading, error } = useAuth();
+  
+
 
   // Form state
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+
+
+
   const [formErrors, setFormErrors] = useState<{
     name?: string;
     email?: string;
@@ -25,6 +31,8 @@ const SignUpScreen = ({ navigation }: { navigation: any }) => {
     confirmPassword?: string;
     terms?: string;
   }>({});
+  
+
 
   // Validate form
   const validateForm = () => {
@@ -74,7 +82,8 @@ const SignUpScreen = ({ navigation }: { navigation: any }) => {
   // Handle sign up
   const handleSignUp = async () => {
     if (validateForm()) {
-      const success = await register(name, email, password);
+      // Default role is 'user'
+      const success = await register(name, email, password, 'user');
       if (success) {
         navigation.reset({
           index: 0,
@@ -213,6 +222,8 @@ const SignUpScreen = ({ navigation }: { navigation: any }) => {
             ) : null}
           </View>
           
+
+          
           {/* Terms and conditions */}
           <View style={styles.termsContainer}>
             <Checkbox
@@ -337,6 +348,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     fontSize: 16,
   },
+
   termsContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
