@@ -11,6 +11,7 @@ import TournamentsScreen from './src/screens/TournamentsScreen';
 import TournamentDetailScreen from './src/screens/TournamentDetailScreen';
 import NewsScreen from './src/screens/NewsScreen';
 import NewsDetailScreen from './src/screens/NewsDetailScreen';
+import CreateNewsScreen from './src/screens/CreateNewsScreen';
 import TeamsScreen from './src/screens/TeamsScreen';
 import TeamDetailScreen from './src/screens/TeamDetailScreen';
 import TicketsScreen from './src/screens/TicketsScreen';
@@ -19,6 +20,8 @@ import MyTicketDetailScreen from './src/screens/MyTicketDetailScreen';
 import LeagueScreen from './src/screens/LeagueScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import EditProfileScreen from './src/screens/EditProfileScreen';
+import ChangePasswordScreen from './src/screens/ChangePasswordScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
 import SignInScreen from './src/screens/SignInScreen';
 import SignUpScreen from './src/screens/SignUpScreen';
@@ -47,6 +50,7 @@ export default function App() {
               <Stack.Screen name="TournamentDetail" component={TournamentDetailScreen} />
               <Stack.Screen name="News" component={NewsScreen} />
               <Stack.Screen name="NewsDetail" component={NewsDetailScreen} />
+              <Stack.Screen name="CreateNews" component={CreateNewsScreen} />
               <Stack.Screen name="Teams" component={TeamsScreen} />
               <Stack.Screen name="TeamDetail" component={TeamDetailScreen} />
               <Stack.Screen name="Tickets" component={TicketsScreen} />
@@ -55,6 +59,8 @@ export default function App() {
               <Stack.Screen name="League" component={LeagueScreen} />
               <Stack.Screen name="Register" component={RegisterScreen} />
               <Stack.Screen name="Profile" component={ProfileScreen} />
+              <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+              <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
               <Stack.Screen name="Notifications" component={NotificationsScreen} />
               <Stack.Screen name="SignIn" component={SignInScreen} />
               <Stack.Screen name="SignUp" component={SignUpScreen} />

@@ -264,19 +264,8 @@ const NewsScreen = ({ navigation }: NewsScreenProps) => {
   
   // Render news article
   const renderNewsArticle = ({ item, index }: { item: NewsArticle, index: number }) => {
-    // Initialize default animation values in case newsAnimations isn't ready yet
-    const defaultAnim = {
-      scale: new Animated.Value(1),
-      opacity: new Animated.Value(1),
-      translateY: new Animated.Value(0)
-    };
-    
-    // Get pre-created animation values with fallback
-    const anim = newsAnimations.length > 0 && index < newsAnimations.length 
-      ? newsAnimations[index] 
-      : defaultAnim;
-    
-    const { scale, opacity, translateY: itemTranslateY } = anim;
+    // Get pre-created animation values
+    const { scale, opacity, translateY: itemTranslateY } = newsAnimations[index < newsAnimations.length ? index : 0];
     
     return (
       <Animated.View 
@@ -360,21 +349,8 @@ const NewsScreen = ({ navigation }: NewsScreenProps) => {
         >
           {/* Header */}
           <View style={styles.header}>
-            <View style={styles.headerTitleRow}>
-              <View>
-                <Text style={styles.headerTitle}>News</Text>
-                <Text style={styles.headerSubtitle}>Latest hockey updates</Text>
-              </View>
-              {user && user.role === 'admin' && (
-                <TouchableOpacity 
-                  style={styles.createButton}
-                  onPress={() => navigation.navigate('CreateNews')}
-                >
-                  <Icon name="plus" size={16} color="white" style={{ marginRight: 4 }} />
-                  <Text style={styles.createButtonText}>Create News</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+            <Text style={styles.headerTitle}>News</Text>
+            <Text style={styles.headerSubtitle}>Latest hockey updates</Text>
           </View>
           
           {/* Search bar */}
@@ -493,11 +469,6 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 8,
   },
-  headerTitleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
@@ -506,24 +477,6 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 16,
     color: '#666666',
-  },
-  createButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1565C0',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.5,
-  },
-  createButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '500',
   },
   searchContainer: {
     paddingHorizontal: 16,
