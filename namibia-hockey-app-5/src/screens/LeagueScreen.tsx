@@ -10,13 +10,16 @@ import {
   StatusBar,
   Dimensions,
   useWindowDimensions,
-  Platform
+  Platform,
+  ActivityIndicator,
+  Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card, Button, Chip, Divider, DataTable, Searchbar, SegmentedButtons } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { supabase } from '../utils/supabase';
 
 // Mock data for standings
 const standingsData = [
@@ -294,13 +297,22 @@ const upcomingGamesData = [
 ];
 
 const LeagueScreen = ({ navigation }: { navigation: any }) => {
-  const [activeTab, setActiveTab] = useState('standings');
-  const [statsType, setStatsType] = useState('skaters');
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(50)).current;
-  
-  // Get safe area insets
   const insets = useSafeAreaInsets();
+  const [activeTab, setActiveTab] = useState('standings');
+  const [scheduleView, setScheduleView] = useState('recent');
+  const [teams, setTeams] = useState<any[]>([]);
+  const [recentGames, setRecentGames] = useState<any[]>([]);
+  const [upcomingGames, setUpcomingGames] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [gamesLoading, setGamesLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [gamesError, setGamesError] = useState<string | null>(null);
+  const [statsType, setStatsType] = useState('skaters');
+  
+  // Animation values for tab transitions
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const translateXAnim = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(0)).current;
   
   // Get window dimensions for responsive layout
   const { width, height } = useWindowDimensions();
@@ -310,55 +322,222 @@ const LeagueScreen = ({ navigation }: { navigation: any }) => {
   
   // Calculate dynamic sizes based on screen dimensions
   const cardWidth = isLandscape ? width * 0.45 : width * 0.92;
-
+  
+  // Fetch teams data from Supabase
   useEffect(() => {
-    Animated.parallel([
+    const fetchTeams = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const { data, error } = await supabase
+          .from('team_details_view')
+          .select('*')
+          .order('points', { ascending: false });
+        
+        if (error) {
+          throw error;
+        }
+        
+        if (data) {
+          setTeams(data);
+        }
+      } catch (err: any) {
+        console.error('Error fetching teams:', err.message);
+        setError(err.message || 'Failed to fetch teams');
+        Alert.alert('Error', 'Failed to load teams. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchTeams();
+  }, []);
+  
+  // Fetch games data from Supabase
+  useEffect(() => {
+    const fetchGames = async () => {
+      try {
+        setGamesLoading(true);
+        setGamesError(null);
+        
+        // Fetch recent games (completed games)
+        const { data: recentData, error: recentError } = await supabase
+          .from('games')
+          .select(`
+            id,
+            date,
+            venue,
+            home_score,
+            away_score,
+            status,
+            home_team:home_team_id(id, name, logo_url),
+            away_team:away_team_id(id, name, logo_url)
+          `)
+          .eq('status', 'completed')
+          .lt('date', new Date().toISOString())
+          .order('date', { ascending: false })
+          .limit(5);
+        
+        if (recentError) {
+          throw recentError;
+        }
+        
+        // Fetch upcoming games (scheduled games)
+        const { data: upcomingData, error: upcomingError } = await supabase
+          .from('games')
+          .select(`
+            id,
+            date,
+            venue,
+            status,
+            home_team:home_team_id(id, name, logo_url),
+            away_team:away_team_id(id, name, logo_url)
+          `)
+          .eq('status', 'scheduled')
+          .gte('date', new Date().toISOString())
+          .order('date', { ascending: true })
+          .limit(10);
+        
+        if (upcomingError) {
+          throw upcomingError;
+        }
+        
+        // Format the data for display
+        if (recentData) {
+          const formattedRecentGames = recentData.map(game => ({
+            id: game.id,
+            date: new Date(game.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+            homeTeam: game.home_team?.name || 'Unknown Team',
+            homeTeamLogo: game.home_team?.logo_url || 'https://via.placeholder.com/100x100/CCCCCC/FFFFFF?text=?',
+            homeScore: game.home_score || 0,
+            awayTeam: game.away_team?.name || 'Unknown Team',
+            awayTeamLogo: game.away_team?.logo_url || 'https://via.placeholder.com/100x100/CCCCCC/FFFFFF?text=?',
+            awayScore: game.away_score || 0,
+            status: 'Final'
+          }));
+          
+          setRecentGames(formattedRecentGames);
+        }
+        
+        if (upcomingData) {
+          const formattedUpcomingGames = upcomingData.map(game => {
+            const gameDate = new Date(game.date);
+            return {
+              id: game.id,
+              date: gameDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+              time: gameDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+              homeTeam: game.home_team?.name || 'Unknown Team',
+              homeTeamLogo: game.home_team?.logo_url || 'https://via.placeholder.com/100x100/CCCCCC/FFFFFF?text=?',
+              awayTeam: game.away_team?.name || 'Unknown Team',
+              awayTeamLogo: game.away_team?.logo_url || 'https://via.placeholder.com/100x100/CCCCCC/FFFFFF?text=?',
+              venue: game.venue || 'TBD'
+            };
+          });
+          
+          setUpcomingGames(formattedUpcomingGames);
+        }
+      } catch (err: any) {
+        console.error('Error fetching games:', err.message);
+        setGamesError(err.message || 'Failed to fetch games');
+      } finally {
+        setGamesLoading(false);
+      }
+    };
+    
+    fetchGames();
+  }, []);
+  
+  // Handle tab change with animation
+  const handleTabChange = (tab: string) => {
+    // Fade out
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 150,
+      useNativeDriver: true,
+    }).start(() => {
+      setActiveTab(tab);
+      
+      // Fade in
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 600,
+        duration: 150,
         useNativeDriver: true,
-      }),
-      Animated.timing(translateY, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
+      }).start();
+    });
+  };
+  
+  // Handle schedule view change
+  const handleScheduleViewChange = (value: string) => {
+    setScheduleView(value);
+  };
 
-  const renderStandings = () => (
+  const renderStandings = () => {
+  // Parse record string to get wins, losses, and overtime losses
+  const parseRecord = (record: string) => {
+    const parts = record.split('-');
+    return {
+      wins: parseInt(parts[0]) || 0,
+      losses: parseInt(parts[1]) || 0,
+      overtimeLosses: parseInt(parts[2]) || 0,
+      gamesPlayed: (parseInt(parts[0]) || 0) + (parseInt(parts[1]) || 0) + (parseInt(parts[2]) || 0)
+    };
+  };
+
+  return (
     <Card style={styles.card}>
       <Card.Content>
         <Text style={styles.sectionTitle}>League Standings</Text>
-        <DataTable>
-          <DataTable.Header style={styles.tableHeader}>
-            <DataTable.Title style={{ flex: 3 }}>Team</DataTable.Title>
-            <DataTable.Title numeric>GP</DataTable.Title>
-            <DataTable.Title numeric>W</DataTable.Title>
-            <DataTable.Title numeric>L</DataTable.Title>
-            <DataTable.Title numeric>OTL</DataTable.Title>
-            <DataTable.Title numeric style={styles.pointsColumn}>PTS</DataTable.Title>
-          </DataTable.Header>
+        
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#0066CC" />
+            <Text style={styles.loadingText}>Loading standings...</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>Failed to load standings</Text>
+            <Button mode="contained" onPress={() => navigation.navigate('League')} style={styles.retryButton}>
+              Retry
+            </Button>
+          </View>
+        ) : (
+          <DataTable>
+            <DataTable.Header style={styles.tableHeader}>
+              <DataTable.Title style={{ flex: 3 }}>Team</DataTable.Title>
+              <DataTable.Title numeric>GP</DataTable.Title>
+              <DataTable.Title numeric>W</DataTable.Title>
+              <DataTable.Title numeric>L</DataTable.Title>
+              <DataTable.Title numeric>OTL</DataTable.Title>
+              <DataTable.Title numeric style={styles.pointsColumn}>PTS</DataTable.Title>
+            </DataTable.Header>
 
-          {standingsData.map((team) => (
-            <DataTable.Row key={team.id} onPress={() => navigation.navigate('TeamDetail', { teamId: team.id })}>
-              <DataTable.Cell style={{ flex: 3 }}>
-                <View style={styles.teamCell}>
-                  <Image source={{ uri: team.logo }} style={styles.teamLogo} />
-                  <Text style={styles.teamName}>{team.name}</Text>
-                </View>
-              </DataTable.Cell>
-              <DataTable.Cell numeric>{team.gamesPlayed}</DataTable.Cell>
-              <DataTable.Cell numeric>{team.wins}</DataTable.Cell>
-              <DataTable.Cell numeric>{team.losses}</DataTable.Cell>
-              <DataTable.Cell numeric>{team.overtimeLosses}</DataTable.Cell>
-              <DataTable.Cell numeric style={styles.pointsColumn}><Text style={styles.pointsText}>{team.points}</Text></DataTable.Cell>
-            </DataTable.Row>
-          ))}
-        </DataTable>
+            {teams.map((team) => {
+              const { wins, losses, overtimeLosses, gamesPlayed } = parseRecord(team.record);
+              return (
+                <DataTable.Row key={team.id} onPress={() => navigation.navigate('TeamDetail', { teamId: team.id })}>
+                  <DataTable.Cell style={{ flex: 3 }}>
+                    <View style={styles.teamCell}>
+                      <Image source={{ uri: team.logo_url }} style={styles.teamLogo} />
+                      <Text style={styles.teamName}>{team.name}</Text>
+                    </View>
+                  </DataTable.Cell>
+                  <DataTable.Cell numeric>{gamesPlayed}</DataTable.Cell>
+                  <DataTable.Cell numeric>{wins}</DataTable.Cell>
+                  <DataTable.Cell numeric>{losses}</DataTable.Cell>
+                  <DataTable.Cell numeric>{overtimeLosses}</DataTable.Cell>
+                  <DataTable.Cell numeric style={styles.pointsColumn}>
+                    <Text style={styles.pointsText}>{team.points}</Text>
+                  </DataTable.Cell>
+                </DataTable.Row>
+              );
+            })}
+          </DataTable>
+        )}
       </Card.Content>
     </Card>
   );
+};  
 
   const renderSkaterStats = () => (
     <Card style={styles.card}>
@@ -432,66 +611,109 @@ const LeagueScreen = ({ navigation }: { navigation: any }) => {
     </Card>
   );
 
-  const renderSchedule = () => (
-    <>
-      <Card style={styles.card}>
-        <Card.Content>
-          <Text style={styles.sectionTitle}>Recent Games</Text>
-          {recentGamesData.map((game) => (
-            <View key={game.id} style={styles.gameItem}>
-              <Text style={styles.gameDate}>{game.date}</Text>
-              <View style={styles.gameTeams}>
-                <View style={styles.gameTeam}>
-                  <Image source={{ uri: game.homeTeamLogo }} style={styles.gameTeamLogo} />
-                  <Text style={styles.gameTeamName}>{game.homeTeam}</Text>
-                </View>
-                <View style={styles.gameScoreContainer}>
-                  <Text style={styles.gameScore}>{game.homeScore} - {game.awayScore}</Text>
-                  <Chip style={styles.gameStatusChip}>
-                    <Text style={styles.gameStatusText}>{game.status}</Text>
-                  </Chip>
-                </View>
-                <View style={styles.gameTeam}>
-                  <Image source={{ uri: game.awayTeamLogo }} style={styles.gameTeamLogo} />
-                  <Text style={styles.gameTeamName}>{game.awayTeam}</Text>
-                </View>
-              </View>
-              <Divider style={styles.gameDivider} />
-            </View>
-          ))}
-        </Card.Content>
-      </Card>
+  const renderSchedule = () => {
+    const renderGamesSkeleton = () => (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0066CC" />
+        <Text style={styles.loadingText}>Loading games...</Text>
+      </View>
+    );
 
-      <Card style={styles.card}>
-        <Card.Content>
-          <Text style={styles.sectionTitle}>Upcoming Games</Text>
-          {upcomingGamesData.map((game) => (
-            <View key={game.id} style={styles.gameItem}>
-              <View style={styles.upcomingGameHeader}>
-                <Text style={styles.gameDate}>{game.date}</Text>
-                <Text style={styles.gameTime}>{game.time}</Text>
-              </View>
-              <View style={styles.gameTeams}>
-                <View style={styles.gameTeam}>
-                  <Image source={{ uri: game.homeTeamLogo }} style={styles.gameTeamLogo} />
-                  <Text style={styles.gameTeamName}>{game.homeTeam}</Text>
+    const renderError = (message: string) => (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{message}</Text>
+        <Button mode="contained" onPress={() => navigation.navigate('League')} style={styles.retryButton}>
+          Retry
+        </Button>
+      </View>
+    );
+
+    const renderEmptyState = (message: string) => (
+      <View style={styles.emptyContainer}>
+        <Icon name="calendar-blank" size={48} color="#CCCCCC" />
+        <Text style={styles.emptyText}>{message}</Text>
+      </View>
+    );
+
+    return (
+      <>
+        <Card style={styles.card}>
+          <Card.Content>
+            <Text style={styles.sectionTitle}>Recent Games</Text>
+            
+            {gamesLoading ? (
+              renderGamesSkeleton()
+            ) : gamesError ? (
+              renderError('Failed to load recent games')
+            ) : recentGames.length === 0 ? (
+              renderEmptyState('No recent games found')
+            ) : (
+              recentGames.map((game) => (
+                <View key={game.id} style={styles.gameItem}>
+                  <Text style={styles.gameDate}>{game.date}</Text>
+                  <View style={styles.gameTeams}>
+                    <View style={styles.gameTeam}>
+                      <Image source={{ uri: game.homeTeamLogo }} style={styles.gameTeamLogo} />
+                      <Text style={styles.gameTeamName}>{game.homeTeam}</Text>
+                    </View>
+                    <View style={styles.gameScoreContainer}>
+                      <Text style={styles.gameScore}>{game.homeScore} - {game.awayScore}</Text>
+                      <Chip style={styles.gameStatusChip}>
+                        <Text style={styles.gameStatusText}>{game.status}</Text>
+                      </Chip>
+                    </View>
+                    <View style={styles.gameTeam}>
+                      <Image source={{ uri: game.awayTeamLogo }} style={styles.gameTeamLogo} />
+                      <Text style={styles.gameTeamName}>{game.awayTeam}</Text>
+                    </View>
+                  </View>
+                  <Divider style={styles.gameDivider} />
                 </View>
-                <View style={styles.vsContainer}>
-                  <Text style={styles.vsText}>VS</Text>
+              ))
+            )}
+          </Card.Content>
+        </Card>
+
+        <Card style={styles.card}>
+          <Card.Content>
+            <Text style={styles.sectionTitle}>Upcoming Games</Text>
+            
+            {gamesLoading ? (
+              renderGamesSkeleton()
+            ) : gamesError ? (
+              renderError('Failed to load upcoming games')
+            ) : upcomingGames.length === 0 ? (
+              renderEmptyState('No upcoming games scheduled')
+            ) : (
+              upcomingGames.map((game) => (
+                <View key={game.id} style={styles.gameItem}>
+                  <View style={styles.upcomingGameHeader}>
+                    <Text style={styles.gameDate}>{game.date}</Text>
+                    <Text style={styles.gameTime}>{game.time}</Text>
+                  </View>
+                  <View style={styles.gameTeams}>
+                    <View style={styles.gameTeam}>
+                      <Image source={{ uri: game.homeTeamLogo }} style={styles.gameTeamLogo} />
+                      <Text style={styles.gameTeamName}>{game.homeTeam}</Text>
+                    </View>
+                    <View style={styles.vsContainer}>
+                      <Text style={styles.vsText}>VS</Text>
+                    </View>
+                    <View style={styles.gameTeam}>
+                      <Image source={{ uri: game.awayTeamLogo }} style={styles.gameTeamLogo} />
+                      <Text style={styles.gameTeamName}>{game.awayTeam}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.venueText}>{game.venue}</Text>
+                  <Divider style={styles.gameDivider} />
                 </View>
-                <View style={styles.gameTeam}>
-                  <Image source={{ uri: game.awayTeamLogo }} style={styles.gameTeamLogo} />
-                  <Text style={styles.gameTeamName}>{game.awayTeam}</Text>
-                </View>
-              </View>
-              <Text style={styles.venueText}>{game.venue}</Text>
-              <Divider style={styles.gameDivider} />
-            </View>
-          ))}
-        </Card.Content>
-      </Card>
-    </>
-  );
+              ))
+            )}
+          </Card.Content>
+        </Card>
+      </>
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.safeArea, { 
@@ -635,7 +857,45 @@ const LeagueScreen = ({ navigation }: { navigation: any }) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#FFFFFF',
+  },
+  loadingContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 200,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666666',
+    marginTop: 12,
+  },
+  errorContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 200,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#D32F2F',
+    marginBottom: 16,
+  },
+  retryButton: {
+    marginTop: 8,
+    backgroundColor: '#0066CC',
+  },
+  emptyContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 200,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666666',
+    marginTop: 12,
+    textAlign: 'center',
   },
   headerGradient: {
     borderBottomLeftRadius: 20,

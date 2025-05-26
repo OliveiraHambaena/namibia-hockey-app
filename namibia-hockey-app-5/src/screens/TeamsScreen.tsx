@@ -1,9 +1,10 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, Image, TouchableOpacity, Dimensions, Animated, StatusBar, RefreshControl, FlatList } from 'react-native';
-import { Card, Title, Paragraph, Text, useTheme, Button, Chip, Divider, Avatar, Badge, Searchbar } from 'react-native-paper';
+import { StyleSheet, View, ScrollView, Image, TouchableOpacity, Dimensions, Animated, StatusBar, RefreshControl, FlatList, ActivityIndicator } from 'react-native';
+import { Card, Title, Paragraph, Text, useTheme, Button, Chip, Divider, Avatar, Badge, Searchbar, Snackbar } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { supabase } from '../utils/supabase';
 
 // Mock data for team categories
 const teamCategories = [
@@ -190,26 +191,102 @@ const TeamsScreen = ({ navigation }: TeamsScreenProps) => {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('1'); // Default to 'All'
-  const [filteredTeams, setFilteredTeams] = useState(teamsData);
+  const [teams, setTeams] = useState<any[]>([]);
+  const [filteredTeams, setFilteredTeams] = useState<any[]>([]);
+  const [featuredTeam, setFeaturedTeam] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
   
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(30)).current;
   
-  // Pre-create animation values for team cards
-  const teamAnimations = teamsData.map((_, index) => ({
-    scale: useRef(new Animated.Value(0.95)).current,
-    opacity: useRef(new Animated.Value(0)).current,
-    translateY: useRef(new Animated.Value(20)).current,
-    delay: 300 + (index * 100)
-  }));
+  // Pre-create animation values for team cards (will be updated when teams load)
+  const [teamAnimations, setTeamAnimations] = useState<any[]>([]);
   
   // Featured team animation values
   const featuredScale = useRef(new Animated.Value(0.95)).current;
   const featuredOpacity = useRef(new Animated.Value(0)).current;
   
-  // Run entrance animations when component mounts
+  // Fetch teams from Supabase
+  const fetchTeams = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch teams from team_details_view
+      const { data, error } = await supabase
+        .from('team_details_view')
+        .select('*');
+        
+      if (error) {
+        console.error('Error fetching teams:', error.message);
+        setError('Failed to load teams. Please try again.');
+        return;
+      }
+      
+      if (data && data.length > 0) {
+        // Map the data to match our UI structure
+        const mappedTeams = data.map(team => ({
+          id: team.id,
+          name: team.name,
+          logo: team.logo_url,
+          city: team.city,
+          division: team.division,
+          conference: team.conference,
+          standing: team.standing || '',
+          record: team.record || '0-0-0',
+          points: team.points || 0,
+          category: 'Professional', // Default since we don't have this field yet
+          coverImage: team.cover_image_url,
+          nextGame: team.next_game ? {
+            opponent: team.next_game.opponent,
+            date: team.next_game.date,
+            time: team.next_game.time,
+            location: team.next_game.location
+          } : undefined
+        }));
+        
+        // Set the first team as featured team if available
+        if (mappedTeams.length > 0) {
+          setFeaturedTeam(mappedTeams[0]);
+          // Remove the featured team from the regular list
+          const regularTeams = mappedTeams.slice(1);
+          setTeams(regularTeams);
+          setFilteredTeams(regularTeams);
+          
+          // Create animation values for team cards
+          const animations = regularTeams.map((_, index) => ({
+            scale: new Animated.Value(0.95),
+            opacity: new Animated.Value(0),
+            translateY: new Animated.Value(20),
+            delay: 300 + (index * 100)
+          }));
+          setTeamAnimations(animations);
+        } else {
+          setTeams([]);
+          setFilteredTeams([]);
+        }
+      } else {
+        // No teams found
+        setTeams([]);
+        setFilteredTeams([]);
+        setFeaturedTeam(null);
+      }
+    } catch (err: any) {
+      console.error('Unexpected error fetching teams:', err.message);
+      setError('An unexpected error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Run entrance animations and fetch teams when component mounts
   useEffect(() => {
+    fetchTeams();
+    
+    // Run entrance animations
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -232,39 +309,43 @@ const TeamsScreen = ({ navigation }: TeamsScreenProps) => {
         useNativeDriver: true,
       })
     ]).start();
-    
-    // Animate team cards
-    teamAnimations.forEach((anim) => {
-      Animated.parallel([
-        Animated.timing(anim.scale, {
-          toValue: 1,
-          duration: 500,
-          delay: anim.delay,
-          useNativeDriver: true
-        }),
-        Animated.timing(anim.opacity, {
-          toValue: 1,
-          duration: 500,
-          delay: anim.delay,
-          useNativeDriver: true
-        }),
-        Animated.timing(anim.translateY, {
-          toValue: 0,
-          duration: 500,
-          delay: anim.delay,
-          useNativeDriver: true
-        })
-      ]).start();
-    });
   }, []);
   
+  // Run team card animations when teamAnimations changes
+  useEffect(() => {
+    if (teamAnimations.length > 0) {
+      Animated.parallel(
+        teamAnimations.map(({ scale, opacity, translateY, delay }) =>
+          Animated.sequence([
+            Animated.delay(delay),
+            Animated.parallel([
+              Animated.timing(scale, {
+                toValue: 1,
+                duration: 400,
+                useNativeDriver: true,
+              }),
+              Animated.timing(opacity, {
+                toValue: 1,
+                duration: 400,
+                useNativeDriver: true,
+              }),
+              Animated.timing(translateY, {
+                toValue: 0,
+                duration: 400,
+                useNativeDriver: true,
+              }),
+            ]),
+          ])
+        )
+      ).start();
+    }
+  }, [teamAnimations]);
+  
   // Handle refresh
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    // Simulate data fetching
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1500);
+    await fetchTeams();
+    setRefreshing(false);
   };
   
   // Handle search
@@ -276,12 +357,42 @@ const TeamsScreen = ({ navigation }: TeamsScreenProps) => {
   // Handle category change
   const handleCategoryChange = (categoryId: string) => {
     setActiveCategory(categoryId);
-    filterTeams(searchQuery, categoryId);
+    
+    // Filter teams based on category
+    if (categoryId === '1') { // All
+      setFilteredTeams(teams);
+    } else {
+      const categoryName = teamCategories.find(cat => cat.id === categoryId)?.name || '';
+      // For now, we're using a default category since we don't have it in the database yet
+      // In the future, when category is added to the database, use this filter
+      // const filtered = teams.filter(team => team.category === categoryName);
+      
+      // For now, just simulate filtering based on conference or division
+      let filtered = [];
+      switch(categoryName) {
+        case 'Professional':
+          filtered = teams.filter(team => team.conference === 'Premier');
+          break;
+        case 'Amateur':
+          filtered = teams.filter(team => team.conference === 'First Division');
+          break;
+        case 'Youth':
+          filtered = teams.filter(team => team.division === 'Central' || team.division === 'Northern');
+          break;
+        case 'Women':
+          filtered = teams.filter(team => team.division === 'Coastal' || team.division === 'Southern');
+          break;
+        default:
+          filtered = teams;
+      }
+      
+      setFilteredTeams(filtered);
+    }
   };
   
   // Filter teams based on search query and category
   const filterTeams = (query: string, categoryId: string) => {
-    let filtered = teamsData;
+    let filtered = teams;
     
     // Apply search filter
     if (query) {
@@ -419,9 +530,14 @@ const TeamsScreen = ({ navigation }: TeamsScreenProps) => {
               <Text style={styles.headerTitle}>Teams</Text>
               <Text style={styles.headerSubtitle}>Discover Namibian hockey teams</Text>
             </View>
-            <TouchableOpacity style={styles.iconButton}>
-              <Icon name="filter-variant" size={24} color="#333333" />
-            </TouchableOpacity>
+            <View style={styles.headerActions}>
+              <TouchableOpacity 
+                style={styles.iconButton}
+                onPress={() => navigation.navigate('CreateTeam')}
+              >
+                <Icon name="plus" size={24} color="#0066CC" />
+              </TouchableOpacity>
+            </View>
           </View>
         </Animated.View>
         
@@ -472,61 +588,95 @@ const TeamsScreen = ({ navigation }: TeamsScreenProps) => {
               refreshing={refreshing}
               onRefresh={onRefresh}
               colors={['#0066CC']}
-              tintColor={'#0066CC'}
+              tintColor="#0066CC"
             />
           }
         >
+          {/* Loading State */}
+          {loading && !refreshing && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#0066CC" />
+              <Text style={styles.loadingText}>Loading teams...</Text>
+            </View>
+          )}
+          
+          {/* Error State */}
+          {error && !loading && (
+            <View style={styles.errorContainer}>
+              <Icon name="alert-circle-outline" size={40} color="#D32F2F" />
+              <Text style={styles.errorText}>{error}</Text>
+              <Button 
+                mode="contained" 
+                onPress={fetchTeams}
+                style={styles.retryButton}
+              >
+                Retry
+              </Button>
+            </View>
+          )}
+          
           {/* Featured Team */}
-          <Animated.View 
-            style={{
-              opacity: featuredOpacity,
-              transform: [{ scale: featuredScale }],
-              marginBottom: 24,
-              paddingHorizontal: 16
-            }}
-          >
-            <Text style={styles.sectionTitle}>Featured Team</Text>
-            <Card 
-              style={styles.featuredCard}
-              onPress={() => navigation.navigate('TeamDetail', { teamId: featuredTeam.id })}
+          {!loading && !error && featuredTeam && (
+            <Animated.View 
+              style={{
+                opacity: featuredOpacity,
+                transform: [{ scale: featuredScale }],
+                marginHorizontal: 16,
+                marginTop: 16,
+                marginBottom: 24
+              }}
             >
-              <Image
-                source={{ uri: featuredTeam.coverImage }}
-                style={styles.featuredImage}
-                resizeMode="cover"
-              />
-              <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.8)']}
-                style={styles.featuredGradient}
-              />
-              <View style={styles.featuredContent}>
-                <View style={styles.featuredTeamInfo}>
-                  <Image 
-                    source={{ uri: featuredTeam.logo }} 
-                    style={styles.featuredLogo}
-                    resizeMode="contain"
-                  />
-                  <View style={styles.featuredTeamDetails}>
-                    <Text style={styles.featuredTeamName}>{featuredTeam.name}</Text>
-                    <Text style={styles.featuredTeamCity}>{featuredTeam.city}</Text>
-                    <View style={styles.featuredTeamRecord}>
-                      <Text style={styles.featuredTeamRecordText}>{featuredTeam.record}</Text>
-                      <Text style={styles.featuredTeamPoints}>{featuredTeam.points} PTS</Text>
+              <Card 
+                style={styles.featuredCard}
+                onPress={() => navigation.navigate('TeamDetail', { teamId: featuredTeam.id })}
+              >
+                <Image 
+                  source={{ uri: featuredTeam.coverImage || featuredTeam.logo }}
+                  style={styles.featuredImage}
+                  resizeMode="cover"
+                />
+                <LinearGradient
+                  colors={['rgba(0,0,0,0.7)', 'rgba(0,0,0,0.3)', 'transparent']}
+                  style={styles.featuredGradient}
+                />
+                <View style={styles.featuredContent}>
+                  <View style={styles.featuredTeamInfo}>
+                    <Image 
+                      source={{ uri: featuredTeam.logo }}
+                      style={styles.featuredLogo}
+                      resizeMode="contain"
+                    />
+                    <View style={styles.featuredTeamDetails}>
+                      <Text style={styles.featuredTeamName}>{featuredTeam.name}</Text>
+                      <Text style={styles.featuredTeamCity}>
+                        {featuredTeam.city || 'Unknown'} • {featuredTeam.division || 'Unknown'} Division
+                      </Text>
+                      <View style={styles.featuredTeamRecord}>
+                        <Text style={styles.featuredTeamRecordText}>
+                          {featuredTeam.standing || 'N/A'} • {featuredTeam.record || '0-0-0'}
+                        </Text>
+                        <Text style={styles.featuredTeamPoints}>
+                          {featuredTeam.points || 0} PTS
+                        </Text>
+                      </View>
                     </View>
                   </View>
+                  
+                  {featuredTeam.nextGame && (
+                    <View style={styles.featuredNextGame}>
+                      <Text style={styles.nextGameTitle}>Next Game</Text>
+                      <Text style={styles.nextGameDetails}>
+                        vs {featuredTeam.nextGame.opponent} • {featuredTeam.nextGame.date}
+                      </Text>
+                      <Text style={styles.nextGameTime}>
+                        {featuredTeam.nextGame.time} • {featuredTeam.nextGame.location}
+                      </Text>
+                    </View>
+                  )}
                 </View>
-                <View style={styles.featuredNextGame}>
-                  <Text style={styles.nextGameTitle}>Next Game</Text>
-                  <Text style={styles.nextGameDetails}>
-                    vs {featuredTeam.nextGame?.opponent} • {featuredTeam.nextGame?.date}
-                  </Text>
-                  <Text style={styles.nextGameTime}>
-                    {featuredTeam.nextGame?.time} • {featuredTeam.nextGame?.location}
-                  </Text>
-                </View>
-              </View>
-            </Card>
-          </Animated.View>
+              </Card>
+            </Animated.View>
+          )}
           
           {/* All Teams */}
           <View style={styles.allTeamsSection}>
@@ -567,6 +717,34 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  loadingContainer: {
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666666',
+  },
+  errorContainer: {
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFEBEE',
+    margin: 16,
+    borderRadius: 8,
+  },
+  errorText: {
+    marginTop: 12,
+    marginBottom: 16,
+    fontSize: 16,
+    color: '#D32F2F',
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#0066CC',
+  },
   header: {
     backgroundColor: '#FFFFFF',
     paddingTop: 10,
@@ -579,8 +757,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    width: '100%',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   backButton: {
     width: 40,

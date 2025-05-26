@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -27,6 +27,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
+import { useAuth } from '../context/AuthContext';
+import { supabase } from '../utils/supabase';
 
 const ProfileScreen = ({ navigation }: { navigation: any }) => {
   // Get screen dimensions for responsive design
@@ -38,9 +40,181 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   
   // State for logout dialog
   const [logoutDialogVisible, setLogoutDialogVisible] = useState(false);
+  
+  // State for user profile data
+  const [profileData, setProfileData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Get authenticated user from context
+  const { user, logout: authLogout } = useAuth();
 
-  // Mock user data
-  const userData = {
+  // Fetch user profile data from profiles_view and set up real-time subscription
+  useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    
+    // Initial fetch of profile data
+    const fetchProfileData = async () => {  
+      try {
+        console.log('Fetching profile data for user ID:', user.id);
+        
+        // Direct SQL query to the profiles_view
+        const { data, error } = await supabase
+          .from('profiles_view')
+          .select('id, full_name, email, avatar_url, role, team, created_at, updated_at')
+          .eq('id', user.id)
+          .single();
+          
+        if (error) {
+          console.error('Error fetching profile data:', error.message, error.code, error.details);
+          setError(error.message);
+          
+          // Fallback to the profiles table if view doesn't work
+          console.log('Attempting fallback to profiles table...');
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+            
+          if (profileError) {
+            console.error('Fallback also failed:', profileError.message);
+            
+            // Create a basic profile from the user object as last resort
+            console.log('Using basic user data as fallback');
+            setProfileData({
+              id: user.id,
+              full_name: user.name,
+              email: user.email,
+              avatar_url: user.avatar,
+              role: user.role || 'User',
+              team: user.team || 'Unassigned',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+          } else if (profileData) {
+            console.log('Profile data fetched from profiles table:', profileData);
+            setProfileData(profileData);
+            setError(null);
+          }
+        } else if (data) {
+          console.log('Profile data fetched from profiles_view:', data);
+          setProfileData(data);
+        } else {
+          console.log('No profile data found for user ID:', user.id);
+          
+          // Create a basic profile from the user object if no data found
+          console.log('Using basic user data as fallback');
+          setProfileData({
+            id: user.id,
+            full_name: user.name,
+            email: user.email,
+            avatar_url: user.avatar,
+            role: user.role || 'User',
+            team: user.team || 'Unassigned',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        }
+      } catch (err: any) {
+        console.error('Unexpected error fetching profile:', err.message);
+        setError(err.message);
+        
+        // Create a basic profile from the user object in case of error
+        if (user && !profileData) {
+          console.log('Using basic user data as fallback after error');
+          setProfileData({
+            id: user.id,
+            full_name: user.name,
+            email: user.email,
+            avatar_url: user.avatar,
+            role: user.role || 'User',
+            team: user.team || 'Unassigned',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    // Execute initial fetch
+    fetchProfileData();
+    
+    // Set up real-time subscription to profiles table
+    const subscription = supabase
+      .channel('profile-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen for all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}` // Only listen for changes to this user's profile
+        },
+        (payload) => {
+          // Only log important events, not every update
+          if (payload.eventType === 'UPDATE') {
+            const newProfileData = payload.new;
+            // Update the profile data with the new data
+            setProfileData(newProfileData);
+          } else if (payload.eventType === 'DELETE') {
+            console.log('Profile was deleted');
+            setProfileData(null);
+          }
+        }
+      )
+      .subscribe();
+    
+    // Clean up subscription when component unmounts
+    return () => {
+      console.log('Unsubscribing from profile changes');
+      subscription.unsubscribe();
+    };
+  }, [user]);
+  
+  // Use real data if available, otherwise fall back to mock data
+  const userData = profileData ? {
+    name: profileData.full_name || 'User',
+    username: profileData.email?.split('@')[0] || 'user',
+    avatar: profileData.avatar_url || 'https://via.placeholder.com/150/1565C0/FFFFFF?text=USER',
+    role: profileData.role || 'Player',
+    team: profileData.team || 'Unassigned',
+    position: 'Center', // These fields would need to be added to the profiles table
+    jerseyNumber: '88',
+    joinDate: new Date(profileData.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+    email: profileData.email,
+    phone: '(555) 123-4567',
+    bio: 'Hockey enthusiast with 10+ years of experience.',
+    stats: {
+      games: 42,
+      goals: 18,
+      assists: 24,
+      points: 42,
+      penaltyMinutes: 12,
+    },
+    achievements: [
+      { id: '1', title: 'MVP', season: '2024', icon: 'trophy' },
+      { id: '2', title: 'Most Goals', season: '2023', icon: 'hockey-puck' },
+      { id: '3', title: 'Team Captain', season: '2022-2024', icon: 'shield' },
+    ],
+    activities: [
+      { id: '1', type: 'Game', title: 'vs Ice Hawks', date: 'May 15, 2025', result: 'Win 4-2', stats: '2G, 1A' },
+      { id: '2', type: 'Practice', title: 'Team Training', date: 'May 12, 2025', duration: '2h' },
+      { id: '3', type: 'Game', title: 'vs Polar Bears', date: 'May 8, 2025', result: 'Loss 2-3', stats: '0G, 2A' },
+      { id: '4', type: 'Event', title: 'Youth Camp Volunteer', date: 'May 5, 2025', duration: '3h' },
+    ],
+    preferences: {
+      notifications: true,
+      darkMode: false,
+      publicProfile: true,
+      language: 'English',
+    }
+  } : {
     name: 'Alex Johnson',
     username: 'alexj88',
     avatar: 'https://via.placeholder.com/150/1565C0/FFFFFF?text=AJ',
@@ -79,14 +253,18 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   };
 
   // Handle logout
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setLogoutDialogVisible(false);
-    // In a real app, you would call a logout function here
-    // Navigate to the sign in screen
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'SignIn' }],
-    });
+    try {
+      await authLogout();
+      // Navigate to the sign in screen
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'SignIn' }],
+      });
+    } catch (err) {
+      console.error('Error during logout:', err);
+    }
   };
 
   // Render stats section
@@ -207,7 +385,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           description="Change your personal information"
           left={props => <List.Icon {...props} icon="account-edit" color="#1565C0" />}
           right={props => <List.Icon {...props} icon="chevron-right" />}
-          onPress={() => {}}
+          onPress={() => navigation.navigate('EditProfile')}
           style={styles.settingsItem}
         />
         
@@ -216,7 +394,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           description="Update your security credentials"
           left={props => <List.Icon {...props} icon="lock" color="#1565C0" />}
           right={props => <List.Icon {...props} icon="chevron-right" />}
-          onPress={() => {}}
+          onPress={() => navigation.navigate('ChangePassword')}
           style={styles.settingsItem}
         />
         
@@ -311,6 +489,72 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
         return null;
     }
   };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <StatusBar style="light" />
+        <Text>Loading profile...</Text>
+      </View>
+    );
+  }
+  
+  // Debug information - only log when there are changes
+  // Removed frequent state logging to reduce console clutter
+  
+  // Add a refresh function for manual refresh
+  const refreshProfile = async () => {
+    if (!user) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles_view')
+        .select('id, full_name, email, avatar_url, role, team, created_at, updated_at')
+        .eq('id', user.id)
+        .single();
+        
+      if (error) {
+        console.error('Error refreshing profile:', error.message);
+        setError('Failed to refresh profile');
+      } else if (data) {
+        console.log('Profile refreshed:', data);
+        setProfileData(data);
+      }
+    } catch (err: any) {
+      console.error('Unexpected error refreshing profile:', err.message);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Show error state
+  if (error && !profileData) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <StatusBar style="light" />
+        <Text style={styles.errorText}>Error loading profile: {error}</Text>
+        <Button mode="contained" onPress={() => navigation.goBack()} style={{marginTop: 20}}>
+          Go Back
+        </Button>
+      </View>
+    );
+  }
+  
+  // If no user is authenticated, redirect to sign in
+  if (!user && !loading) {
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'SignIn' }],
+    });
+    return null;
+  }
+  
+
 
   return (
     <>
@@ -421,6 +665,17 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
 };
 
 const styles = StyleSheet.create({
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 10,
+  },
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',

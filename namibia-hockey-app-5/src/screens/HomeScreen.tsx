@@ -1,10 +1,12 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, Image, TouchableOpacity, Dimensions, Animated, StatusBar, RefreshControl } from 'react-native';
-import { Card, Title, Paragraph, Text, useTheme, Button, Chip, Divider, Avatar, Badge } from 'react-native-paper';
+import { StyleSheet, View, ScrollView, Image, TouchableOpacity, Dimensions, Animated, StatusBar, RefreshControl, ActivityIndicator } from 'react-native';
+import { Card, Title, Paragraph, Text, useTheme, Button, Chip, Divider, Avatar, Badge, Snackbar } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { FlatList } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
+import { supabase } from '../utils/supabase';
+import { useAuth } from '../context/AuthContext';
 
 // Mock data for carousel
 const carouselData = [
@@ -71,32 +73,28 @@ const quickAccessData = [
   }
 ];
 
-// Mock data for news
-const newsData = [
-  {
-    id: '1',
-    title: 'Player of the Month Announced',
-    snippet: 'Connor McDavid wins Player of the Month for the third consecutive time this season.',
-    imageUrl: 'https://via.placeholder.com/80x80/0066CC/FFFFFF?text=News+1',
-    date: 'May 10, 2025'
-  },
-  {
-    id: '2',
-    title: 'New Training Facility Opening',
-    snippet: 'State-of-the-art training facility to open next month with advanced technologies.',
-    imageUrl: 'https://via.placeholder.com/80x80/FF6600/FFFFFF?text=News+2',
-    date: 'May 8, 2025'
-  },
-  {
-    id: '3',
-    title: 'Youth Hockey Program Expands',
-    snippet: 'Local youth hockey program to add three new age groups starting this fall.',
-    imageUrl: 'https://via.placeholder.com/80x80/00A651/FFFFFF?text=News+3',
-    date: 'May 5, 2025'
-  }
-];
+// Define type for news article from the news_articles_view
+type NewsArticle = {
+  id: string;
+  title: string;
+  snippet: string;
+  content: string;
+  image_url: string;
+  author: string;
+  author_avatar: string;
+  author_title: string;
+  published_date: string;
+  read_time: string;
+  is_featured: boolean;
+  created_at: string;
+  updated_at: string;
+  category_id: string;
+  category_name: string;
+  category_icon: string;
+};
 
 const HomeScreen = ({ navigation }: { navigation: any }) => {
+  const { user } = useAuth();
   const theme = useTheme();
   const { width } = Dimensions.get('window');
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -105,17 +103,50 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
   const [refreshing, setRefreshing] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
   
+  // State for news data
+  const [newsData, setNewsData] = useState<NewsArticle[]>([]);
+  const [newsLoading, setNewsLoading] = useState(true);
+  const [newsError, setNewsError] = useState<string | null>(null);
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  
   // Animation values for staggered animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(30)).current;
   
+  // Fetch latest news from Supabase
+  const fetchLatestNews = async () => {
+    try {
+      setNewsLoading(true);
+      setNewsError(null);
+      
+      const { data, error } = await supabase
+        .from('news_articles_view')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(3);
+        
+      if (error) {
+        console.error('Error fetching news:', error.message);
+        setNewsError(error.message);
+      } else {
+        setNewsData(data || []);
+      }
+    } catch (err: any) {
+      console.error('Unexpected error fetching news:', err.message);
+      setNewsError(err.message);
+    } finally {
+      setNewsLoading(false);
+    }
+  };
+  
   // Handle refresh
   const onRefresh = () => {
     setRefreshing(true);
-    // Simulate data fetching
-    setTimeout(() => {
+    // Fetch real data
+    fetchLatestNews().then(() => {
       setRefreshing(false);
-    }, 1500);
+    });
   };
   
   // Pre-create animation values for carousel items
@@ -131,16 +162,20 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
     delay: 300 + (index * 100)
   }));
   
-  // Pre-create animation values for news items
-  const newsAnimations = newsData.map((_, index) => ({
-    scale: useRef(new Animated.Value(0.9)).current,
-    opacity: useRef(new Animated.Value(0)).current,
-    translateX: useRef(new Animated.Value(20)).current,
-    delay: 500 + (index * 150)
-  }));
+  // Animation values for news items
+  const [newsAnimValues, setNewsAnimValues] = useState<Array<{
+    scale: Animated.Value;
+    opacity: Animated.Value;
+    translateX: Animated.Value;
+    delay: number;
+  }>>([]);
   
-  // Run entrance animations when component mounts
+  // Fetch news data and run entrance animations when component mounts
   useEffect(() => {
+    // Fetch latest news
+    fetchLatestNews();
+    
+    // Run entrance animations
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -191,29 +226,31 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
       ]).start();
     });
     
-    // Animate news items
-    newsAnimations.forEach((anim) => {
-      Animated.parallel([
-        Animated.timing(anim.scale, {
-          toValue: 1,
-          duration: 400,
-          delay: anim.delay,
-          useNativeDriver: true
-        }),
-        Animated.timing(anim.opacity, {
-          toValue: 1,
-          duration: 400,
-          delay: anim.delay,
-          useNativeDriver: true
-        }),
-        Animated.timing(anim.translateX, {
-          toValue: 0,
-          duration: 400,
-          delay: anim.delay,
-          useNativeDriver: true
-        })
-      ]).start();
-    });
+    // Animate news items if available
+    if (newsAnimValues.length > 0) {
+      newsAnimValues.forEach((anim) => {
+        Animated.parallel([
+          Animated.timing(anim.scale, {
+            toValue: 1,
+            duration: 400,
+            delay: anim.delay,
+            useNativeDriver: true
+          }),
+          Animated.timing(anim.opacity, {
+            toValue: 1,
+            duration: 400,
+            delay: anim.delay,
+            useNativeDriver: true
+          }),
+          Animated.timing(anim.translateX, {
+            toValue: 0,
+            duration: 400,
+            delay: anim.delay,
+            useNativeDriver: true
+          })
+        ]).start();
+      });
+    }
   }, []);
   
   // Auto-scroll carousel
@@ -387,50 +424,75 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
     );
   };
 
-  // Create animation values for news items - one for each news item
-  const newsAnimValues = newsData.map(() => ({
-    scale: useRef(new Animated.Value(0.9)).current,
-    opacity: useRef(new Animated.Value(0)).current
-  }));
-  
-  // Start news animations
+  // Create animation values for news items when data changes
   useEffect(() => {
-    // Stagger the animations
-    newsData.forEach((_, index: number) => {
-      Animated.parallel([
-        Animated.timing(newsAnimValues[index].opacity, {
-          toValue: 1,
-          duration: 500,
-          delay: index * 100,
-          useNativeDriver: true
-        }),
-        Animated.timing(newsAnimValues[index].scale, {
-          toValue: 1,
-          duration: 500,
-          delay: index * 100,
-          useNativeDriver: true
-        })
-      ]).start();
-    });
-  }, []);
+    if (newsData.length > 0) {
+      // Create new animation values for each news item
+      const newAnimValues = newsData.map((_, index) => ({
+        scale: new Animated.Value(0.9),
+        opacity: new Animated.Value(0),
+        translateX: new Animated.Value(20),
+        delay: 500 + (index * 150)
+      }));
+      
+      setNewsAnimValues(newAnimValues);
+      
+      // Start animations for each news item
+      newAnimValues.forEach((anim) => {
+        Animated.parallel([
+          Animated.timing(anim.scale, {
+            toValue: 1,
+            duration: 400,
+            delay: anim.delay,
+            useNativeDriver: true
+          }),
+          Animated.timing(anim.opacity, {
+            toValue: 1,
+            duration: 400,
+            delay: anim.delay,
+            useNativeDriver: true
+          }),
+          Animated.timing(anim.translateX, {
+            toValue: 0,
+            duration: 400,
+            delay: anim.delay,
+            useNativeDriver: true
+          })
+        ]).start();
+      });
+    }
+  }, [newsData]);
   
   // Render news item with animation
-  const renderNewsItem = ({ item, index }: { item: any, index: number }) => {
-    const { scale, opacity } = newsAnimValues[index];
+  const renderNewsItem = ({ item, index }: { item: NewsArticle, index: number }) => {
+    // Use animation values if available, or create default ones
+    const animValues = (newsAnimValues && newsAnimValues[index]) || {
+      scale: new Animated.Value(1),
+      opacity: new Animated.Value(1)
+    };
+    
+    // Format date
+    const formattedDate = item.created_at 
+      ? new Date(item.created_at).toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'short', 
+          day: 'numeric' 
+        })
+      : '';
     
     return (
       <Animated.View 
         key={`news-item-${item.id}`}
         style={{
-          opacity, 
-          transform: [{ scale }],
+          opacity: animValues.opacity, 
+          transform: [{ scale: animValues.scale }],
           marginBottom: 16
         }}
       >
-        <Card style={styles.newsCard}>
+        <Card style={styles.newsCard} onPress={() => navigation.navigate('NewsDetail', { newsId: item.id })}>
           <View style={styles.newsCardContent}>
             <Image
-              source={{ uri: item.imageUrl }}
+              source={{ uri: item.image_url || 'https://via.placeholder.com/80x80/0066CC/FFFFFF?text=News' }}
               style={styles.newsImage}
               resizeMode="cover"
             />
@@ -438,10 +500,18 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
               <View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
                   <Icon name="clock-outline" size={12} color="#0066CC" style={{ marginRight: 4 }} />
-                  <Text style={styles.newsDate}>{item.date}</Text>
+                  <Text style={styles.newsDate}>{formattedDate}</Text>
+                  {item.category_name && (
+                    <Chip 
+                      style={styles.categoryChip} 
+                      textStyle={styles.categoryChipText}
+                    >
+                      {item.category_name}
+                    </Chip>
+                  )}
                 </View>
                 <Title style={styles.newsTitle}>{item.title}</Title>
-                <Paragraph style={styles.newsSnippet}>{item.snippet}</Paragraph>
+                <Paragraph style={styles.newsSnippet} numberOfLines={2}>{item.snippet}</Paragraph>
               </View>
               <TouchableOpacity 
                 style={styles.readMoreButton}
@@ -639,11 +709,37 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
           >
             <View style={styles.sectionTitleContainer}>
               <Text style={styles.sectionTitle}>Latest News</Text>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('News')}>
                 <Text style={styles.seeAllText}>See All</Text>
               </TouchableOpacity>
             </View>
-            {newsData.map((item, index) => renderNewsItem({ item, index }))}
+            
+            {newsLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#0066CC" />
+                <Text style={styles.loadingText}>Loading news...</Text>
+              </View>
+            ) : newsError ? (
+              <View style={styles.errorContainer}>
+                <Icon name="alert-circle-outline" size={24} color="#FF6B6B" />
+                <Text style={styles.errorText}>Could not load news</Text>
+                <Button 
+                  mode="contained" 
+                  onPress={fetchLatestNews}
+                  style={styles.retryButton}
+                  labelStyle={styles.retryButtonLabel}
+                >
+                  Retry
+                </Button>
+              </View>
+            ) : newsData.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Icon name="newspaper-variant-outline" size={32} color="#AAAAAA" />
+                <Text style={styles.emptyText}>No news articles available</Text>
+              </View>
+            ) : (
+              newsData.map((item, index) => renderNewsItem({ item, index }))
+            )}
           </Animated.View>
           
           {/* Upcoming Events Section */}
@@ -696,6 +792,60 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+  },
+  // Loading, error, and empty state styles
+  loadingContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 8,
+    color: '#666666',
+    fontSize: 14,
+  },
+  errorContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorText: {
+    marginTop: 8,
+    marginBottom: 12,
+    color: '#FF6B6B',
+    fontSize: 14,
+  },
+  retryButton: {
+    marginTop: 8,
+    backgroundColor: '#0066CC',
+    paddingHorizontal: 16,
+  },
+  retryButtonLabel: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  emptyContainer: {
+    padding: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    marginTop: 12,
+    color: '#999999',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  // Category chip styles
+  categoryChip: {
+    height: 20,
+    marginLeft: 8,
+    paddingHorizontal: 6,
+    backgroundColor: '#E3F2FD',
+  },
+  categoryChipText: {
+    fontSize: 10,
+    color: '#0066CC',
+    marginVertical: 0,
   },
   container: {
     flex: 1,
@@ -991,21 +1141,6 @@ const styles = StyleSheet.create({
   newsTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 5,
-    color: '#222222',
-    lineHeight: 22,
-    letterSpacing: 0.2,
-  },
-  newsDate: {
-    fontSize: 12,
-    color: '#666666',
-    letterSpacing: 0.1,
-  },
-  newsSnippet: {
-    fontSize: 14,
-    marginBottom: 10,
-    color: '#444444',
-    lineHeight: 20,
     letterSpacing: 0.1,
   },
   readMore: {

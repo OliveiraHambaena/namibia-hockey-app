@@ -1,73 +1,107 @@
-import React, { useRef, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, Image, TouchableOpacity, Dimensions, Animated, StatusBar, Share } from 'react-native';
-import { Text, Card, Chip, Divider, Avatar, List, Button, DataTable } from 'react-native-paper';
+import React, { useRef, useEffect, useState } from 'react';
+import { StyleSheet, View, ScrollView, Image, TouchableOpacity, Dimensions, Animated, StatusBar, Share, ActivityIndicator } from 'react-native';
+import { Text, Card, Chip, Divider, Avatar, List, Button, DataTable, Snackbar } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { supabase } from '../utils/supabase';
 
-// Mock data for team details (Namibian team)
-const teamDetails = {
-  id: 'featured1',
-  name: 'Coastal Pirates',
-  logo: 'https://via.placeholder.com/150x150/0066CC/FFFFFF?text=CP',
-  coverImage: 'https://via.placeholder.com/800x400/0066CC/FFFFFF?text=Coastal+Pirates',
-  city: 'Swakopmund',
-  division: 'Coastal',
-  conference: 'Premier',
-  standing: '1st',
-  record: '18-4-2',
-  points: 56,
-  stats: {
-    goalsFor: 82,
-    goalsAgainst: 45,
-    powerPlayPercentage: '26.3%',
-    penaltyKillPercentage: '85.7%',
-    shotsPerGame: 29.8,
-    faceoffPercentage: '54.2%'
-  },
-  nextGame: {
-    opponent: 'Windhoek Warriors',
-    opponentLogo: 'https://via.placeholder.com/50x50/FFB81C/000000?text=WW',
-    date: 'May 15, 2025',
-    time: '7:30 PM CAT',
-    location: 'Home',
-    venue: 'Swakopmund Ice Arena'
-  },
-  lastGame: {
-    opponent: 'Desert Lions',
-    opponentLogo: 'https://via.placeholder.com/50x50/0038A8/FFFFFF?text=DL',
-    result: 'W 3-1',
-    date: 'May 10, 2025'
-  },
-  coach: {
-    name: 'Daniel Mwandingi',
-    image: 'https://via.placeholder.com/100x100',
-    experience: '7 years'
-  },
-  roster: [
-    { id: 'p1', number: '10', name: 'Shilongo', position: 'C', goals: 22, assists: 18, points: 40 },
-    { id: 'p2', number: '7', name: 'Amukoto', position: 'RW', goals: 15, assists: 24, points: 39 },
-    { id: 'p3', number: '23', name: 'Nghipandulwa', position: 'C', goals: 14, assists: 19, points: 33 },
-    { id: 'p4', number: '17', name: 'Van Wyk', position: 'RW', goals: 12, assists: 16, points: 28 },
-    { id: 'p5', number: '3', name: 'Tjituka', position: 'D', goals: 5, assists: 21, points: 26 }
-  ],
-  schedule: [
-    { id: 'g1', opponent: 'Windhoek Warriors', opponentLogo: 'https://via.placeholder.com/40x40/FFB81C/000000?text=WW', date: 'May 15, 2025', time: '7:30 PM', location: 'Home' },
-    { id: 'g2', opponent: 'Kalahari Kings', opponentLogo: 'https://via.placeholder.com/40x40/6F263D/FFFFFF?text=KK', date: 'May 18, 2025', time: '7:00 PM', location: 'Away' },
-    { id: 'g3', opponent: 'Northern Lights', opponentLogo: 'https://via.placeholder.com/40x40/FF4C00/FFFFFF?text=NL', date: 'May 20, 2025', time: '7:30 PM', location: 'Home' }
-  ]
+// Define a function to generate random colors for placeholder images if needed
+const getRandomColor = () => {
+  const colors = ['0066CC', 'FFB81C', 'CC0000', '006633', '9900CC', 'FF6600', '339933', '990000'];
+  return colors[Math.floor(Math.random() * colors.length)];
 };
 
+// Define types for Player, Game, and other data structures
+interface Player {
+  id: string;
+  number: string;
+  name: string;
+  position: string;
+  goals: number;
+  assists: number;
+  points: number;
+}
+
+interface Game {
+  id: string;
+  opponent: string;
+  opponentLogo: string;
+  date: string;
+  time: string;
+  location: string;
+  venue?: string;
+}
+
+interface Coach {
+  name: string;
+  image: string;
+  experience: string;
+}
+
+interface TeamStats {
+  goalsFor: number;
+  goalsAgainst: number;
+  powerPlayPercentage: string;
+  penaltyKillPercentage: string;
+  shotsPerGame: number;
+  faceoffPercentage: string;
+}
+
+interface TeamData {
+  id: string;
+  name: string;
+  logo: string;
+  coverImage: string;
+  city: string;
+  division: string;
+  conference: string;
+  standing: string;
+  record: string;
+  points: number;
+  stats: TeamStats;
+  coach: Coach;
+  roster: Player[];
+  nextGame: Game | null;
+  lastGame: any | null;
+  schedule: Game[];
+}
+
 // Define types for navigation and route props
-type TeamDetailProps = {
+interface TeamDetailProps {
   route: { params: { teamId?: string } };
   navigation: any; // Using 'any' for simplicity, but ideally should use proper navigation type
 };
 
 const TeamDetailScreen = ({ route, navigation }: TeamDetailProps) => {
-  // In a real app, you would fetch the team details based on the ID
-  // const { teamId } = route.params;
-  const team = teamDetails; // For mock purposes
+  const { teamId } = route.params || {};
+  const [team, setTeam] = useState<TeamData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  // Check if current user has admin role
+  const checkUserRole = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Fetch user's profile to check role
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+        
+        if (data && data.role === 'admin') {
+          setIsAdmin(true);
+        }
+      }
+    } catch (err) {
+      console.error('Error checking user role:', err);
+    }
+  };
   
   const { width } = Dimensions.get('window');
   
@@ -75,14 +109,86 @@ const TeamDetailScreen = ({ route, navigation }: TeamDetailProps) => {
   const scrollY = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   
-  // Run entrance animation once when component mounts
+  // Fetch team details from Supabase
+  const fetchTeamDetails = async () => {
+    if (!teamId) {
+      setError('Team ID is missing');
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch team details from team_details_view
+      const { data, error } = await supabase
+        .from('team_details_view')
+        .select('*')
+        .eq('id', teamId)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching team details:', error.message);
+        setError('Failed to load team details. Please try again.');
+        return;
+      }
+      
+      if (data) {
+        // Transform data to match the expected structure
+        const transformedData = {
+          id: data.id,
+          name: data.name,
+          logo: data.logo_url,
+          coverImage: data.cover_image_url,
+          city: data.city,
+          division: data.division,
+          conference: data.conference,
+          standing: data.standing || 'N/A',
+          record: data.record || '0-0-0',
+          points: data.points || 0,
+          stats: data.stats || {
+            goalsFor: 0,
+            goalsAgainst: 0,
+            powerPlayPercentage: '0%',
+            penaltyKillPercentage: '0%',
+            shotsPerGame: 0,
+            faceoffPercentage: '0%'
+          },
+          coach: data.coach || {
+            name: 'No Coach Assigned',
+            image: 'https://via.placeholder.com/100x100/CCCCCC/666666?text=Coach',
+            experience: 'N/A'
+          },
+          roster: data.roster || [],
+          nextGame: data.next_game || null,
+          lastGame: data.last_game || null,
+          schedule: data.schedule || []
+        };
+        
+        setTeam(transformedData);
+      } else {
+        setError('Team not found');
+      }
+    } catch (err: any) {
+      console.error('Unexpected error fetching team details:', err.message);
+      setError('An unexpected error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Run entrance animation and fetch team details when component mounts
   useEffect(() => {
+    fetchTeamDetails();
+    checkUserRole();
+    
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 600,
       useNativeDriver: true,
     }).start();
-  }, []);
+  }, [teamId]);
   
   // Header animation based on scroll
   const headerOpacity = scrollY.interpolate({
@@ -99,15 +205,53 @@ const TeamDetailScreen = ({ route, navigation }: TeamDetailProps) => {
   
   // Share team info
   const shareTeam = async () => {
+    if (!team) return;
+    
     try {
       await Share.share({
-        message: `Check out the ${team.city} ${team.name} team! Current record: ${team.record}`,
-        title: `${team.city} ${team.name}`,
+        message: `Check out the ${team?.city || ''} ${team?.name || ''} team! Current record: ${team?.record || '0-0-0'}`,
+        title: `${team?.city || ''} ${team?.name || ''}`,
       });
     } catch (error) {
       console.error(error);
     }
   };
+  
+  // If loading, show loading spinner
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0066CC" />
+          <Text style={styles.loadingText}>Loading team details...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+  
+  // If error, show error message
+  if (error || !team) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <View style={styles.errorContainer}>
+          <Icon name="alert-circle-outline" size={50} color="#D32F2F" />
+          <Text style={styles.errorText}>{error || 'Team not found'}</Text>
+          <Button 
+            mode="contained" 
+            onPress={() => {
+              if (teamId) fetchTeamDetails();
+              else navigation.goBack();
+            }}
+            style={styles.retryButton}
+          >
+            {teamId ? 'Retry' : 'Go Back'}
+          </Button>
+        </View>
+      </SafeAreaView>
+    );
+  }
   
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -235,11 +379,11 @@ const TeamDetailScreen = ({ route, navigation }: TeamDetailProps) => {
                     <Text style={styles.vsText}>VS</Text>
                     <View style={styles.gameTeam}>
                       <Image 
-                        source={{ uri: team.nextGame.opponentLogo }} 
+                        source={{ uri: team?.nextGame?.opponentLogo || 'https://via.placeholder.com/50x50/CCCCCC/666666?text=Team' }} 
                         style={styles.gameTeamLogo}
                         resizeMode="contain"
                       />
-                      <Text style={styles.gameTeamName}>{team.nextGame.opponent}</Text>
+                      <Text style={styles.gameTeamName}>{team?.nextGame?.opponent || 'TBD'}</Text>
                     </View>
                   </View>
                 </View>
@@ -249,17 +393,17 @@ const TeamDetailScreen = ({ route, navigation }: TeamDetailProps) => {
                 <View style={styles.gameDetails}>
                   <View style={styles.gameDetailItem}>
                     <Icon name="calendar" size={16} color="#0066CC" style={styles.gameDetailIcon} />
-                    <Text style={styles.gameDetailText}>{team.nextGame.date}</Text>
+                    <Text style={styles.gameDetailText}>{team?.nextGame?.date || 'TBD'}</Text>
                   </View>
                   <View style={styles.gameDetailItem}>
                     <Icon name="clock-outline" size={16} color="#0066CC" style={styles.gameDetailIcon} />
-                    <Text style={styles.gameDetailText}>{team.nextGame.time}</Text>
+                    <Text style={styles.gameDetailText}>{team?.nextGame?.time || 'TBD'}</Text>
                   </View>
                   <View style={styles.gameDetailItem}>
                     <Icon name="map-marker" size={16} color="#0066CC" style={styles.gameDetailIcon} />
                     <Text style={styles.gameDetailText}>
-                      {team.nextGame.location === 'Home' ? 'Home - ' : 'Away - '}
-                      {team.nextGame.venue}
+                      {team?.nextGame?.location === 'Home' ? 'Home - ' : 'Away - '}
+                      {team?.nextGame?.venue || 'TBD'}
                     </Text>
                   </View>
                 </View>
@@ -321,9 +465,20 @@ const TeamDetailScreen = ({ route, navigation }: TeamDetailProps) => {
           <View style={styles.sectionContainer}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Top Players</Text>
-              <TouchableOpacity>
-                <Text style={styles.viewAllText}>View Roster</Text>
-              </TouchableOpacity>
+              <View style={styles.headerActions}>
+                {isAdmin && (
+                  <TouchableOpacity 
+                    style={styles.addButton}
+                    onPress={() => navigation.navigate('AddPlayer', { teamId: team?.id })}
+                  >
+                    <Icon name="account-plus" size={16} color="#FFFFFF" />
+                    <Text style={styles.addButtonText}>Add Player</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity>
+                  <Text style={styles.viewAllText}>View Roster</Text>
+                </TouchableOpacity>
+              </View>
             </View>
             
             <Card style={styles.rosterCard}>
@@ -337,54 +492,91 @@ const TeamDetailScreen = ({ route, navigation }: TeamDetailProps) => {
                   <DataTable.Title numeric>PTS</DataTable.Title>
                 </DataTable.Header>
                 
-                {team.roster.map((player) => (
-                  <DataTable.Row key={player.id} style={styles.tableRow}>
-                    <DataTable.Cell style={{ flex: 0.5 }}>{player.number}</DataTable.Cell>
-                    <DataTable.Cell>{player.name}</DataTable.Cell>
-                    <DataTable.Cell style={{ flex: 0.5 }}>{player.position}</DataTable.Cell>
-                    <DataTable.Cell numeric>{player.goals}</DataTable.Cell>
-                    <DataTable.Cell numeric>{player.assists}</DataTable.Cell>
-                    <DataTable.Cell numeric>{player.points}</DataTable.Cell>
+                {team?.roster && team.roster.length > 0 ? (
+                  team.roster.map((player: Player) => (
+                    <DataTable.Row key={player.id} style={styles.tableRow}>
+                      <DataTable.Cell style={{ flex: 0.5 }}>{player.number}</DataTable.Cell>
+                      <DataTable.Cell>{player.name}</DataTable.Cell>
+                      <DataTable.Cell style={{ flex: 0.5 }}>{player.position}</DataTable.Cell>
+                      <DataTable.Cell numeric>{player.goals}</DataTable.Cell>
+                      <DataTable.Cell numeric>{player.assists}</DataTable.Cell>
+                      <DataTable.Cell numeric>{player.points}</DataTable.Cell>
+                    </DataTable.Row>
+                  ))
+                ) : (
+                  <DataTable.Row style={styles.tableRow}>
+                    <DataTable.Cell style={{ flex: 4, alignItems: 'center' }}>
+                      <Text style={{ textAlign: 'center' }}>No players in roster</Text>
+                    </DataTable.Cell>
                   </DataTable.Row>
-                ))}
+                )}
               </DataTable>
             </Card>
           </View>
           
           {/* Upcoming Games */}
           <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Upcoming Games</Text>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Upcoming Games</Text>
+              {isAdmin && (
+                <TouchableOpacity 
+                  style={styles.addButton}
+                  onPress={() => navigation.navigate('AddGame', { teamId: team?.id })}
+                >
+                  <Icon name="calendar-plus" size={16} color="#FFFFFF" />
+                  <Text style={styles.addButtonText}>Add Game</Text>
+                </TouchableOpacity>
+              )}
+            </View>
             <Card style={styles.scheduleCard}>
               <Card.Content>
-                {team.schedule.map((game, index) => (
-                  <React.Fragment key={game.id}>
-                    <View style={styles.scheduleItem}>
-                      <View style={styles.scheduleTeam}>
-                        <Image 
-                          source={{ uri: game.opponentLogo }} 
-                          style={styles.scheduleTeamLogo}
-                          resizeMode="contain"
-                        />
-                        <Text style={styles.scheduleTeamName}>{game.opponent}</Text>
+                {team?.schedule && team.schedule.length > 0 ? (
+                  team.schedule.map((game: Game, index: number) => (
+                    <React.Fragment key={game.id}>
+                      <View style={styles.scheduleItem}>
+                        <View style={styles.scheduleTeam}>
+                          <Image 
+                            source={{ uri: game.opponentLogo }} 
+                            style={styles.scheduleTeamLogo}
+                            resizeMode="contain"
+                          />
+                          <Text style={styles.scheduleTeamName}>{game.opponent}</Text>
+                        </View>
+                        <View style={styles.scheduleInfo}>
+                          <Text style={styles.scheduleDate}>{game.date}</Text>
+                          <Text style={styles.scheduleTime}>{game.time}</Text>
+                          <Chip style={styles.locationChip}>
+                            <Text style={styles.locationChipText}>{game.location}</Text>
+                          </Chip>
+                        </View>
                       </View>
-                      <View style={styles.scheduleInfo}>
-                        <Text style={styles.scheduleDate}>{game.date}</Text>
-                        <Text style={styles.scheduleTime}>{game.time}</Text>
-                        <Chip style={styles.locationChip}>
-                          <Text style={styles.locationChipText}>{game.location}</Text>
-                        </Chip>
-                      </View>
-                    </View>
-                    {index < team.schedule.length - 1 && <Divider style={styles.scheduleDivider} />}
-                  </React.Fragment>
-                ))}
+                      {index < team.schedule.length - 1 && <Divider style={styles.scheduleDivider} />}
+                    </React.Fragment>
+                  ))
+                ) : (
+                  <View style={styles.emptySchedule}>
+                    <Icon name="calendar-blank" size={40} color="#CCCCCC" />
+                    <Text style={styles.emptyScheduleText}>No upcoming games</Text>
+                  </View>
+                )}
               </Card.Content>
             </Card>
           </View>
           
           {/* Coach */}
           <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Coach</Text>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Coach</Text>
+              {isAdmin && (
+                <TouchableOpacity 
+                  style={styles.addButton}
+                  onPress={() => navigation.navigate('AddCoach', { teamId: team?.id })}
+                >
+                  <Icon name="account-tie-plus" size={16} color="#FFFFFF" />
+                  <Text style={styles.addButtonText}>Add Coach</Text>
+                </TouchableOpacity>
+              )}
+            </View>
             <Card style={styles.coachCard}>
               <Card.Content style={styles.coachContent}>
                 <Image 
@@ -420,6 +612,19 @@ const TeamDetailScreen = ({ route, navigation }: TeamDetailProps) => {
           <Text style={styles.bottomBarButtonText}>Stats</Text>
         </TouchableOpacity>
       </View>
+      
+      {/* Snackbar for feedback messages */}
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={3000}
+        action={{
+          label: 'Dismiss',
+          onPress: () => setSnackbarVisible(false),
+        }}
+      >
+        {error}
+      </Snackbar>
     </SafeAreaView>
   );
 };
@@ -428,6 +633,65 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#F5F7FA',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5F7FA',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#0066CC',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5F7FA',
+    padding: 20,
+  },
+  errorText: {
+    marginTop: 16,
+    marginBottom: 24,
+    fontSize: 16,
+    color: '#D32F2F',
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 16,
+    backgroundColor: '#0066CC',
+  },
+  emptySchedule: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyScheduleText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: '#666666',
+    textAlign: 'center',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0066CC',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginRight: 10,
+  },
+  addButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginLeft: 4,
   },
   scrollView: {
     flex: 1,

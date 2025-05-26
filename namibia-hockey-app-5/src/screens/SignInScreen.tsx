@@ -42,13 +42,29 @@ const SignInScreen = ({ navigation }: { navigation: any }) => {
   // Handle sign in
   const handleSignIn = async () => {
     if (validateForm()) {
-      const success = await login(email, password);
-      if (success) {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'TabHome' }],
-        });
+      try {
+        console.log('SignInScreen - Attempting login with email:', email);
+        
+        // Attempt to login
+        const success = await login(email, password);
+        
+        if (success) {
+          console.log('SignInScreen - Login successful, navigating to home');
+          // Navigate to the home screen on success
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'TabHome' }],
+          });
+        } else {
+          console.log('SignInScreen - Login failed');
+          // The error will be set in the AuthContext and displayed
+        }
+      } catch (err) {
+        console.error('SignInScreen - Unexpected error during login:', err);
+        // Handle any unexpected errors
       }
+    } else {
+      console.log('SignInScreen - Form validation failed');
     }
   };
 

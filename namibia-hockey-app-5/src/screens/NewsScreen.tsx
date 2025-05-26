@@ -1,275 +1,294 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { StyleSheet, View, ScrollView, Image, TouchableOpacity, Dimensions, Animated, StatusBar, RefreshControl, FlatList } from 'react-native';
-import { Card, Title, Paragraph, Text, useTheme, Button, Chip, Divider, Avatar, Badge, Searchbar } from 'react-native-paper';
+import { Card, Title, Paragraph, Text, useTheme, Button, Chip, Divider, Avatar, Badge, Searchbar, ActivityIndicator } from 'react-native-paper';
+import { useAuth } from '../context/AuthContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { supabase } from '../utils/supabase';
 
-// Mock data for news categories
-const newsCategories = [
-  { id: '1', name: 'All', icon: 'newspaper' },
-  { id: '2', name: 'Latest', icon: 'clock-outline' },
-  { id: '3', name: 'Teams', icon: 'account-group' },
-  { id: '4', name: 'Players', icon: 'hockey-sticks' },
-  { id: '5', name: 'Events', icon: 'calendar' }
-];
-
-// Mock data for featured news
-const featuredNews = {
-  id: 'featured1',
-  title: 'NHL Announces Major Rule Changes for Next Season',
-  snippet: 'The NHL has announced several rule changes that will take effect starting next season, including modifications to overtime and shootout procedures.',
-  imageUrl: 'https://via.placeholder.com/600x300/0066CC/FFFFFF?text=NHL+Rule+Changes',
-  author: 'Sarah Johnson',
-  authorAvatar: 'https://via.placeholder.com/40x40',
-  date: 'May 10, 2025',
-  readTime: '5 min read',
-  category: 'Latest'
+// Define type for news categories
+type NewsCategory = {
+  id: string;
+  name: string;
+  icon: string;
 };
 
-// Mock data for news articles
-const newsData = [
-  {
-    id: '1',
-    title: 'Player of the Month Announced',
-    snippet: 'Connor McDavid wins Player of the Month for the third consecutive time this season with an impressive 25 points in 12 games.',
-    imageUrl: 'https://via.placeholder.com/400x200/0066CC/FFFFFF?text=Player+of+Month',
-    author: 'Mike Richards',
-    authorAvatar: 'https://via.placeholder.com/40x40',
-    date: 'May 10, 2025',
-    readTime: '3 min read',
-    category: 'Players',
-    featured: false
-  },
-  {
-    id: '2',
-    title: 'New Training Facility Opening',
-    snippet: 'State-of-the-art training facility to open next month with advanced technologies including VR training systems and AI-powered analytics.',
-    imageUrl: 'https://via.placeholder.com/400x200/FF6600/FFFFFF?text=Training+Facility',
-    author: 'Jennifer Smith',
-    authorAvatar: 'https://via.placeholder.com/40x40',
-    date: 'May 8, 2025',
-    readTime: '4 min read',
-    category: 'Teams',
-    featured: false
-  },
-  {
-    id: '3',
-    title: 'Youth Hockey Program Expands',
-    snippet: 'Local youth hockey program to add three new age groups starting this fall, providing opportunities for more young players to join the sport.',
-    imageUrl: 'https://via.placeholder.com/400x200/00A651/FFFFFF?text=Youth+Program',
-    author: 'David Wilson',
-    authorAvatar: 'https://via.placeholder.com/40x40',
-    date: 'May 5, 2025',
-    readTime: '2 min read',
-    category: 'Events',
-    featured: false
-  },
-  {
-    id: '4',
-    title: 'Interview: Rising Star Talks About First Season',
-    snippet: 'Rookie sensation Alex Chen discusses his first NHL season, challenges faced, and goals for the future in an exclusive interview.',
-    imageUrl: 'https://via.placeholder.com/400x200/9C27B0/FFFFFF?text=Player+Interview',
-    author: 'Lisa Thompson',
-    authorAvatar: 'https://via.placeholder.com/40x40',
-    date: 'May 3, 2025',
-    readTime: '6 min read',
-    category: 'Players',
-    featured: false
-  },
-  {
-    id: '5',
-    title: 'Championship Finals Set to Begin Next Week',
-    snippet: 'After an exciting playoff season, the championship finals are set to begin next week with the top two teams facing off in a best-of-seven series.',
-    imageUrl: 'https://via.placeholder.com/400x200/2196F3/FFFFFF?text=Championship+Finals',
-    author: 'Robert Brown',
-    authorAvatar: 'https://via.placeholder.com/40x40',
-    date: 'May 1, 2025',
-    readTime: '4 min read',
-    category: 'Events',
-    featured: false
-  },
-  {
-    id: '6',
-    title: 'Team Trade Deadline: Winners and Losers',
-    snippet: 'A comprehensive analysis of this season\'s trade deadline moves, highlighting which teams improved their rosters and which ones missed opportunities.',
-    imageUrl: 'https://via.placeholder.com/400x200/FF9800/FFFFFF?text=Trade+Deadline',
-    author: 'Chris Davis',
-    authorAvatar: 'https://via.placeholder.com/40x40',
-    date: 'April 28, 2025',
-    readTime: '7 min read',
-    category: 'Teams',
-    featured: false
-  }
+// Initial categories - will be replaced with data from the database
+const initialCategories: NewsCategory[] = [
+  { id: 'all', name: 'All', icon: 'newspaper' }
 ];
 
 // Define types for the component props
 type NewsScreenProps = {
-  navigation: any; // Using 'any' for simplicity, but ideally should use proper navigation type
+  navigation: any;
 };
 
-// Define types for news article
+// Define types for news article from the news_articles_view
 type NewsArticle = {
   id: string;
   title: string;
   snippet: string;
-  imageUrl: string;
+  content: string;
+  image_url: string;
   author: string;
-  authorAvatar: string;
-  date: string;
-  readTime: string;
-  category: string;
-  featured?: boolean;
+  author_avatar: string;
+  author_title: string;
+  published_date: string;
+  read_time: string;
+  is_featured: boolean;
+  created_at: string;
+  updated_at: string;
+  category_id: string;
+  category_name: string;
+  category_icon: string;
 };
 
 const NewsScreen = ({ navigation }: NewsScreenProps) => {
+  const { user } = useAuth();
   const theme = useTheme();
   const { width } = Dimensions.get('window');
+  
+  // State for news data
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState('1'); // Default to 'All'
-  const [filteredNews, setFilteredNews] = useState(newsData);
+  const [activeCategory, setActiveCategory] = useState('all'); // Default to 'All'
+  const [categories, setCategories] = useState<NewsCategory[]>(initialCategories);
+  const [newsArticles, setNewsArticles] = useState<NewsArticle[]>([]);
+  const [featuredArticle, setFeaturedArticle] = useState<NewsArticle | null>(null);
   
   // Animation values
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(30)).current;
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const translateY = useRef(new Animated.Value(0)).current;
   
-  // Pre-create animation values for news items
-  const newsAnimations = newsData.map((_, index) => ({
-    scale: useRef(new Animated.Value(0.95)).current,
-    opacity: useRef(new Animated.Value(0)).current,
-    translateY: useRef(new Animated.Value(20)).current,
-    delay: 300 + (index * 100)
-  }));
+  // Create animation values for each news item
+  const [newsAnimations, setNewsAnimations] = useState<Array<{
+    scale: Animated.Value;
+    opacity: Animated.Value;
+    translateY: Animated.Value;
+  }>>([]);
   
-  // Featured news animation values
-  const featuredScale = useRef(new Animated.Value(0.95)).current;
-  const featuredOpacity = useRef(new Animated.Value(0)).current;
+  // Fetch news categories
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('news_categories')
+        .select('*')
+        .order('name');
+        
+      if (error) {
+        console.error('Error fetching categories:', error.message);
+        return;
+      }
+      
+      if (data) {
+        // Add 'All' category at the beginning
+        const allCategories = [
+          { id: 'all', name: 'All', icon: 'newspaper' },
+          ...data
+        ];
+        setCategories(allCategories);
+      }
+    } catch (err: any) {
+      console.error('Unexpected error fetching categories:', err.message);
+    }
+  };
   
-  // Run entrance animations when component mounts
+  // Fetch news articles
+  const fetchNewsArticles = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { data, error } = await supabase
+        .from('news_articles_view')
+        .select('*')
+        .order('published_date', { ascending: false });
+        
+      if (error) {
+        console.error('Error fetching news articles:', error.message);
+        setError('Failed to load news articles');
+        return;
+      }
+      
+      if (data) {
+        // Find featured article
+        const featured = data.find(article => article.is_featured);
+        if (featured) {
+          setFeaturedArticle(featured);
+        }
+        
+        // Set all articles
+        setNewsArticles(data);
+        
+        // Initialize animations for news items
+        const animations = data.map(() => ({
+          scale: new Animated.Value(1),
+          opacity: new Animated.Value(0),
+          translateY: new Animated.Value(50)
+        }));
+        
+        setNewsAnimations(animations);
+        
+        // Animate news items in sequence
+        animations.forEach((anim, index) => {
+          Animated.sequence([
+            Animated.delay(100 * index),
+            Animated.parallel([
+              Animated.timing(anim.opacity, {
+                toValue: 1,
+                duration: 300,
+                useNativeDriver: true
+              }),
+              Animated.timing(anim.translateY, {
+                toValue: 0,
+                duration: 300,
+                useNativeDriver: true
+              })
+            ])
+          ]).start();
+        });
+      }
+    } catch (err: any) {
+      console.error('Unexpected error fetching news articles:', err.message);
+      setError('An unexpected error occurred');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+  
+  // Load data on mount and set up real-time subscription
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.timing(translateY, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.timing(featuredScale, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.timing(featuredOpacity, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      })
-    ]).start();
+    fetchCategories();
+    fetchNewsArticles();
     
-    // Animate news items
-    newsAnimations.forEach((anim) => {
-      Animated.parallel([
-        Animated.timing(anim.scale, {
-          toValue: 1,
-          duration: 500,
-          delay: anim.delay,
-          useNativeDriver: true
-        }),
-        Animated.timing(anim.opacity, {
-          toValue: 1,
-          duration: 500,
-          delay: anim.delay,
-          useNativeDriver: true
-        }),
-        Animated.timing(anim.translateY, {
-          toValue: 0,
-          duration: 500,
-          delay: anim.delay,
-          useNativeDriver: true
-        })
-      ]).start();
+    // Set up scroll listener for header animations
+    scrollY.addListener(({ value }) => {
+      // Fade out header as user scrolls down
+      fadeAnim.setValue(value < 50 ? 1 - (value / 50) : 0);
+      translateY.setValue(value < 30 ? -value / 3 : -10);
     });
+    
+    // Set up real-time subscription to news_articles table
+    const subscription = supabase
+      .channel('news_changes')
+      .on('postgres_changes', {
+        event: '*', // Listen for all events (INSERT, UPDATE, DELETE)
+        schema: 'public',
+        table: 'news_articles'
+      }, (payload) => {
+        console.log('Real-time update received:', payload);
+        // Refresh news articles when changes occur
+        fetchNewsArticles();
+      })
+      .subscribe();
+    
+    return () => {
+      scrollY.removeAllListeners();
+      // Unsubscribe from real-time updates when component unmounts
+      subscription.unsubscribe();
+    };
   }, []);
   
   // Handle refresh
   const onRefresh = () => {
     setRefreshing(true);
-    // Simulate data fetching
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1500);
+    fetchNewsArticles();
   };
   
   // Handle search
   const onChangeSearch = (query: string) => {
     setSearchQuery(query);
-    filterNews(query, activeCategory);
   };
   
   // Handle category change
   const handleCategoryChange = (categoryId: string) => {
     setActiveCategory(categoryId);
-    filterNews(searchQuery, categoryId);
   };
   
   // Filter news based on search query and category
   const filterNews = (query: string, categoryId: string) => {
-    let filtered = newsData;
+    let filtered = [...newsArticles];
     
-    // Apply search filter
+    // Filter by category
+    if (categoryId !== 'all') { // If not 'All'
+      filtered = filtered.filter(item => item.category_id === categoryId);
+    }
+    
+    // Filter by search query
     if (query) {
-      filtered = filtered.filter(article => 
-        article.title.toLowerCase().includes(query.toLowerCase()) ||
-        article.snippet.toLowerCase().includes(query.toLowerCase()) ||
-        article.author.toLowerCase().includes(query.toLowerCase())
+      const lowercasedQuery = query.toLowerCase();
+      filtered = filtered.filter(
+        item => 
+          item.title.toLowerCase().includes(lowercasedQuery) ||
+          item.snippet.toLowerCase().includes(lowercasedQuery) ||
+          item.author.toLowerCase().includes(lowercasedQuery)
       );
     }
     
-    // Apply category filter
-    if (categoryId !== '1') { // If not 'All'
-      const categoryName = newsCategories.find(cat => cat.id === categoryId)?.name;
-      if (categoryName) {
-        filtered = filtered.filter(article => article.category === categoryName);
-      }
-    }
-    
-    setFilteredNews(filtered);
+    return filtered;
   };
   
   // Render news category
-  const renderNewsCategory = ({ item }: { item: { id: string, name: string, icon: string } }) => (
-    <TouchableOpacity
-      style={[
-        styles.categoryButton,
-        activeCategory === item.id && styles.activeCategoryButton
-      ]}
-      onPress={() => handleCategoryChange(item.id)}
-    >
-      <Icon 
-        name={item.icon} 
-        size={18} 
-        color={activeCategory === item.id ? 'white' : '#0066CC'} 
-      />
-      <Text 
+  const renderNewsCategory = ({ item }: { item: NewsCategory }) => {
+    const isActive = activeCategory === item.id;
+    
+    return (
+      <TouchableOpacity
         style={[
-          styles.categoryText,
-          activeCategory === item.id && styles.activeCategoryText
+          styles.categoryButton,
+          isActive && styles.activeCategoryButton
         ]}
+        onPress={() => handleCategoryChange(item.id)}
       >
-        {item.name}
-      </Text>
-    </TouchableOpacity>
-  );
+        <Icon 
+          name={item.icon} 
+          size={18} 
+          color={isActive ? 'white' : '#0066CC'} 
+        />
+        <Text 
+          style={[
+            styles.categoryText,
+            isActive && styles.activeCategoryText
+          ]}
+        >
+          {item.name}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+  
+  // Format date
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      // Format as 'MMM d, yyyy' (e.g., 'May 25, 2025')
+      const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
+      return date.toLocaleDateString('en-US', options);
+    } catch (error) {
+      return dateString;
+    }
+  };
   
   // Render news article
   const renderNewsArticle = ({ item, index }: { item: NewsArticle, index: number }) => {
-    // Get pre-created animation values
-    const { scale, opacity, translateY: itemTranslateY } = newsAnimations[index < newsAnimations.length ? index : 0];
+    // Initialize default animation values in case newsAnimations isn't ready yet
+    const defaultAnim = {
+      scale: new Animated.Value(1),
+      opacity: new Animated.Value(1),
+      translateY: new Animated.Value(0)
+    };
+    
+    // Get pre-created animation values with fallback
+    const anim = newsAnimations.length > 0 && index < newsAnimations.length 
+      ? newsAnimations[index] 
+      : defaultAnim;
+    
+    const { scale, opacity, translateY: itemTranslateY } = anim;
     
     return (
       <Animated.View 
@@ -284,7 +303,7 @@ const NewsScreen = ({ navigation }: NewsScreenProps) => {
           onPress={() => navigation.navigate('NewsDetail', { newsId: item.id })}
         >
           <Image
-            source={{ uri: item.imageUrl }}
+            source={{ uri: item.image_url || 'https://via.placeholder.com/400x200/CCCCCC/666666?text=No+Image' }}
             style={styles.newsImage}
             resizeMode="cover"
           />
@@ -293,28 +312,31 @@ const NewsScreen = ({ navigation }: NewsScreenProps) => {
             <View style={styles.newsMetaRow}>
               <View style={styles.authorContainer}>
                 <Avatar.Image 
-                  source={{ uri: item.authorAvatar }} 
                   size={24} 
+                  source={{ uri: item.author_avatar || 'https://via.placeholder.com/40x40' }} 
                   style={styles.authorAvatar}
                 />
                 <Text style={styles.authorName}>{item.author}</Text>
               </View>
               <View style={styles.dateContainer}>
-                <Icon name="clock-outline" size={14} color="#666666" style={{ marginRight: 4 }} />
-                <Text style={styles.dateText}>{item.date}</Text>
+                <Icon name="calendar-outline" size={14} color="#666666" style={{ marginRight: 4 }} />
+                <Text style={styles.dateText}>{formatDate(item.published_date)}</Text>
               </View>
             </View>
             
-            <Title style={styles.newsTitle}>{item.title}</Title>
-            <Paragraph style={styles.newsSnippet}>{item.snippet}</Paragraph>
+            <Text style={styles.newsTitle}>{item.title}</Text>
+            <Text style={styles.newsSnippet} numberOfLines={2}>{item.snippet}</Text>
             
             <View style={styles.newsFooter}>
-              <Chip style={styles.categoryChip}>
-                <Text style={styles.categoryChipText}>{item.category}</Text>
+              <Chip 
+                style={styles.categoryChip} 
+                textStyle={styles.categoryChipText}
+              >
+                {item.category_name}
               </Chip>
               <View style={styles.readTimeContainer}>
                 <Icon name="book-outline" size={14} color="#666666" style={{ marginRight: 4 }} />
-                <Text style={styles.readTimeText}>{item.readTime}</Text>
+                <Text style={styles.readTimeText}>{item.read_time}</Text>
               </View>
             </View>
           </Card.Content>
@@ -323,163 +345,170 @@ const NewsScreen = ({ navigation }: NewsScreenProps) => {
     );
   };
   
+  // Filter news based on active category and search query
+  const filteredNews = filterNews(searchQuery, activeCategory);
+  
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle="dark-content" backgroundColor="#F5F7FA" />
       <View style={styles.container}>
-        {/* Header */}
-        <Animated.View 
-          style={[
-            styles.header,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: translateY.interpolate({
-                inputRange: [0, 30],
-                outputRange: [0, -10],
-                extrapolate: 'clamp'
-              })}]
-            }
-          ]}
-        >
-          <View style={styles.headerContent}>
-            <TouchableOpacity 
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-            >
-              <Icon name="arrow-left" size={24} color="#333333" />
-            </TouchableOpacity>
-            <View>
-              <Text style={styles.headerTitle}>News</Text>
-              <Text style={styles.headerSubtitle}>Latest hockey updates</Text>
-            </View>
-            <TouchableOpacity style={styles.iconButton}>
-              <Icon name="bookmark-outline" size={24} color="#333333" />
-            </TouchableOpacity>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#0066CC" />
+            <Text style={styles.loadingText}>Loading news...</Text>
           </View>
-        </Animated.View>
-        
-        {/* Search Bar */}
-        <Animated.View 
-          style={{
-            opacity: fadeAnim,
-            transform: [{ translateY }],
-            paddingHorizontal: 16,
-            paddingTop: 16,
-            marginBottom: 16
-          }}
-        >
-          <Searchbar
-            placeholder="Search news"
-            onChangeText={onChangeSearch}
-            value={searchQuery}
-            style={styles.searchBar}
-            iconColor="#666666"
-            inputStyle={styles.searchInput}
-          />
-        </Animated.View>
-        
-        {/* Categories */}
-        <Animated.View 
-          style={{
-            opacity: fadeAnim,
-            transform: [{ translateY }],
-            marginBottom: 16
-          }}
-        >
-          <FlatList
-            data={newsCategories}
-            renderItem={renderNewsCategory}
-            keyExtractor={item => item.id}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoriesContainer}
-          />
-        </Animated.View>
-        
-        {/* Main Content */}
-        <ScrollView
-          style={styles.scrollView}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={['#0066CC']}
-              tintColor={'#0066CC'}
-            />
-          }
-        >
-          {/* Featured News */}
-          <Animated.View 
-            style={{
-              opacity: featuredOpacity,
-              transform: [{ scale: featuredScale }],
-              marginBottom: 24,
-              paddingHorizontal: 16
-            }}
-          >
-            <Text style={styles.sectionTitle}>Featured</Text>
-            <Card 
-              style={styles.featuredCard}
-              onPress={() => navigation.navigate('NewsDetail', { newsId: featuredNews.id })}
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Icon name="alert-circle-outline" size={60} color="#FF6B6B" />
+            <Text style={styles.errorText}>{error}</Text>
+            <Button 
+              mode="contained" 
+              onPress={fetchNewsArticles}
+              style={styles.retryButton}
             >
-              <Image
-                source={{ uri: featuredNews.imageUrl }}
-                style={styles.featuredImage}
-                resizeMode="cover"
+              Retry
+            </Button>
+          </View>
+        ) : (
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={{ paddingBottom: 24 }}
+            showsVerticalScrollIndicator={false}
+            scrollEventThrottle={16}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+              { useNativeDriver: false }
+            )}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={['#0066CC']}
+                tintColor="#0066CC"
               />
-              <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.8)']}
-                style={styles.featuredGradient}
-              />
-              <View style={styles.featuredContent}>
-                <Chip style={styles.featuredChip}>
-                  <Text style={styles.featuredChipText}>{featuredNews.category}</Text>
-                </Chip>
-                <Text style={styles.featuredTitle}>{featuredNews.title}</Text>
-                <View style={styles.featuredMeta}>
-                  <View style={styles.featuredAuthor}>
-                    <Avatar.Image 
-                      source={{ uri: featuredNews.authorAvatar }} 
-                      size={24} 
-                      style={{ marginRight: 8 }}
-                    />
-                    <Text style={styles.featuredAuthorName}>{featuredNews.author}</Text>
-                  </View>
-                  <View style={styles.featuredDate}>
-                    <Icon name="clock-outline" size={14} color="rgba(255,255,255,0.8)" style={{ marginRight: 4 }} />
-                    <Text style={styles.featuredDateText}>{featuredNews.date}</Text>
-                  </View>
+            }
+          >
+            {/* Header */}
+            <View style={styles.header}>
+              <View style={styles.headerTitleRow}>
+                <View>
+                  <Text style={styles.headerTitle}>News</Text>
+                  <Text style={styles.headerSubtitle}>Latest hockey updates</Text>
                 </View>
+                {user && user.role === 'admin' && (
+                  <TouchableOpacity 
+                    style={styles.createButton}
+                    onPress={() => navigation.navigate('CreateNews')}
+                  >
+                    <Icon name="plus" size={16} color="white" style={{ marginRight: 4 }} />
+                    <Text style={styles.createButtonText}>Create News</Text>
+                  </TouchableOpacity>
+                )}
               </View>
-            </Card>
-          </Animated.View>
-          
-          {/* Latest News */}
-          <View style={styles.latestNewsSection}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Latest News</Text>
-              <TouchableOpacity>
-                <Text style={styles.viewAllText}>View All</Text>
-              </TouchableOpacity>
             </View>
             
-            {filteredNews.length > 0 ? (
-              filteredNews.map((item, index) => (
-                <View key={item.id}>
-                  {renderNewsArticle({ item, index })}
-                </View>
-              ))
-            ) : (
-              <View style={styles.emptyContainer}>
-                <Icon name="newspaper-variant-outline" size={60} color="#CCCCCC" />
-                <Text style={styles.emptyText}>No news found</Text>
-                <Text style={styles.emptySubtext}>Try adjusting your search or filters</Text>
+            {/* Search bar */}
+            <View style={styles.searchContainer}>
+              <Searchbar
+                placeholder="Search news..."
+                onChangeText={onChangeSearch}
+                value={searchQuery}
+                style={styles.searchBar}
+                iconColor="#666666"
+              />
+            </View>
+            
+            {/* Categories */}
+            <View style={styles.categoriesContainer}>
+              <FlatList
+                data={categories}
+                renderItem={renderNewsCategory}
+                keyExtractor={item => item.id}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.categoriesList}
+              />
+            </View>
+            
+            {/* Featured News */}
+            {featuredArticle && (
+              <View style={styles.featuredContainer}>
+                <TouchableOpacity 
+                  style={styles.featuredCard}
+                  onPress={() => navigation.navigate('NewsDetail', { newsId: featuredArticle.id })}
+                >
+                  <Image
+                    source={{ uri: featuredArticle.image_url || 'https://via.placeholder.com/600x300/0066CC/FFFFFF?text=Featured+News' }}
+                    style={styles.featuredImage}
+                    resizeMode="cover"
+                  />
+                  <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.8)']}
+                    style={styles.featuredGradient}
+                  />
+                  <View style={styles.featuredContent}>
+                    <Chip 
+                      style={styles.featuredChip} 
+                      textStyle={styles.featuredChipText}
+                    >
+                      {featuredArticle.category_name}
+                    </Chip>
+                    <Text style={styles.featuredTitle}>{featuredArticle.title}</Text>
+                    <View style={styles.featuredMeta}>
+                      <View style={styles.featuredAuthor}>
+                        <Avatar.Image 
+                          size={24} 
+                          source={{ uri: featuredArticle.author_avatar || 'https://via.placeholder.com/40x40' }} 
+                          style={{ marginRight: 8 }}
+                        />
+                        <Text style={styles.featuredAuthorName}>{featuredArticle.author}</Text>
+                      </View>
+                      <View style={styles.featuredDate}>
+                        <Icon name="calendar-outline" size={14} color="rgba(255,255,255,0.8)" style={{ marginRight: 4 }} />
+                        <Text style={styles.featuredDateText}>{formatDate(featuredArticle.published_date)}</Text>
+                      </View>
+                    </View>
+                  </View>
+                </TouchableOpacity>
               </View>
             )}
-          </View>
-        </ScrollView>
+            
+            {/* Latest News */}
+            <View style={styles.latestNewsSection}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Latest News</Text>
+                <TouchableOpacity>
+                  <Text style={styles.viewAllText}>View All</Text>
+                </TouchableOpacity>
+              </View>
+              
+              {filteredNews.length > 0 ? (
+                filteredNews.map((item, index) => (
+                  <View key={item.id}>
+                    {renderNewsArticle({ item, index })}
+                  </View>
+                ))
+              ) : (
+                <View style={styles.emptyContainer}>
+                  <Icon name="newspaper-variant-outline" size={60} color="#CCCCCC" />
+                  <Text style={styles.emptyText}>No news found</Text>
+                  <Text style={styles.emptySubtext}>Try adjusting your search or filters</Text>
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        )}
       </View>
+      
+      {/* Floating action button for creating news */}
+      {user && user.role === 'admin' && !loading && !error && (
+        <TouchableOpacity 
+          style={styles.fab}
+          onPress={() => navigation.navigate('CreateNews')}
+        >
+          <Icon name="plus" size={24} color="white" />
+        </TouchableOpacity>
+      )}
     </SafeAreaView>
   );
 };
@@ -492,76 +521,95 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    backgroundColor: '#FFFFFF',
-    paddingTop: 10,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
-    elevation: 0,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
-  headerContent: {
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666666',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    marginTop: 12,
+    marginBottom: 20,
+    fontSize: 16,
+    color: '#666666',
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 10,
+    backgroundColor: '#0066CC',
+  },
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  headerTitleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   headerTitle: {
+    fontSize: 28,
     fontWeight: 'bold',
-    fontSize: 24,
     color: '#333333',
-    letterSpacing: 0.5,
-    textAlign: 'center',
   },
   headerSubtitle: {
-    fontSize: 13,
+    fontSize: 16,
     color: '#666666',
-    letterSpacing: 0.2,
-    textAlign: 'center',
   },
-  iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
+  createButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-  },
-  searchBar: {
+    backgroundColor: '#1565C0',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
     elevation: 2,
-    borderRadius: 12,
-    height: 50,
-    backgroundColor: 'white',
-    marginTop: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.5,
   },
-  searchInput: {
+  createButtonText: {
+    color: 'white',
     fontSize: 14,
+    fontWeight: '500',
   },
-  categoriesContainer: {
+  searchContainer: {
     paddingHorizontal: 16,
     paddingVertical: 8,
+  },
+  searchBar: {
+    elevation: 0,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    height: 48,
+  },
+  categoriesContainer: {
+    marginVertical: 8,
+  },
+  categoriesList: {
+    paddingHorizontal: 16,
   },
   categoryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 25,
     marginRight: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 102, 204, 0.1)',
   },
   activeCategoryButton: {
     backgroundColor: '#0066CC',
@@ -577,6 +625,10 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  featuredContainer: {
+    paddingHorizontal: 16,
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 18,
@@ -757,6 +809,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999999',
     marginTop: 8,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#1565C0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    zIndex: 999,
   }
 });
 

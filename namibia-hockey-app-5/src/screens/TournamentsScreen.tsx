@@ -1,81 +1,36 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, Image, TouchableOpacity, Dimensions, Animated, StatusBar, RefreshControl, FlatList } from 'react-native';
-import { Card, Title, Paragraph, Text, useTheme, Button, Chip, Divider, Avatar, Badge, Searchbar } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Dimensions, Image, TouchableOpacity, SafeAreaView, FlatList, RefreshControl, Animated, ActivityIndicator, Alert, StatusBar } from 'react-native';
+import { Searchbar, Card, Title, Divider, Chip, useTheme, Button, Paragraph, Badge, Avatar } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { supabase } from '../utils/supabase';
 
-// Mock data for tournaments
-const tournamentsData = [
-  {
-    id: '1',
-    title: 'Summer Hockey Championship',
-    location: 'City Arena, Downtown',
-    date: 'June 15-20, 2025',
-    status: 'Registration Open',
-    statusColor: '#00A651', // Green
-    imageUrl: 'https://via.placeholder.com/300x150/0066CC/FFFFFF?text=Summer+Championship',
-    categories: ['Adult', 'Professional'],
-    teams: 16,
-    prize: '$5,000'
-  },
-  {
-    id: '2',
-    title: 'Youth Hockey League',
-    location: 'Community Sports Center',
-    date: 'July 5-25, 2025',
-    status: 'Coming Soon',
-    statusColor: '#FF6600', // Orange
-    imageUrl: 'https://via.placeholder.com/300x150/FF6600/FFFFFF?text=Youth+League',
-    categories: ['Youth', 'U16'],
-    teams: 12,
-    prize: 'Trophies'
-  },
-  {
-    id: '3',
-    title: 'Veterans Cup',
-    location: 'Memorial Stadium',
-    date: 'May 30-31, 2025',
-    status: 'Registration Closed',
-    statusColor: '#FF3B30', // Red
-    imageUrl: 'https://via.placeholder.com/300x150/9C27B0/FFFFFF?text=Veterans+Cup',
-    categories: ['Veterans', '35+'],
-    teams: 8,
-    prize: '$2,500'
-  },
-  {
-    id: '4',
-    title: 'Winter Classic',
-    location: 'Outdoor Rink, Central Park',
-    date: 'December 15-20, 2025',
-    status: 'Coming Soon',
-    statusColor: '#FF6600', // Orange
-    imageUrl: 'https://via.placeholder.com/300x150/2196F3/FFFFFF?text=Winter+Classic',
-    categories: ['All Ages', 'Exhibition'],
-    teams: 24,
-    prize: '$10,000'
-  },
-  {
-    id: '5',
-    title: 'Corporate Challenge',
-    location: 'Business District Arena',
-    date: 'September 10-12, 2025',
-    status: 'Registration Open',
-    statusColor: '#00A651', // Green
-    imageUrl: 'https://via.placeholder.com/300x150/FF9800/FFFFFF?text=Corporate+Challenge',
-    categories: ['Corporate', 'Amateur'],
-    teams: 10,
-    prize: 'Trophy + Donation'
-  }
-];
+// Default placeholder image for tournaments without images
+const DEFAULT_TOURNAMENT_IMAGE = 'https://via.placeholder.com/300x150/0066CC/FFFFFF?text=Tournament';
 
 // Filter categories for tournaments
 const filterCategories = [
   { id: '1', name: 'All', icon: 'hockey-sticks' },
-  { id: '2', name: 'Youth', icon: 'human-child' },
-  { id: '3', name: 'Adult', icon: 'human' },
-  { id: '4', name: 'Professional', icon: 'medal' },
-  { id: '5', name: 'Amateur', icon: 'trophy-outline' }
+  { id: '2', name: 'Adult', icon: 'human' },
+  { id: '3', name: 'Youth', icon: 'human-child' },
+  { id: '4', name: 'Senior Men', icon: 'human-male' },
+  { id: '5', name: 'Senior Women', icon: 'human-female' },
+  { id: '6', name: 'Junior Men', icon: 'human-male-child' },
+  { id: '7', name: 'Junior Women', icon: 'human-female-child' },
+  { id: '8', name: 'Under-21', icon: 'numeric-2-circle-outline' },
+  { id: '9', name: 'Under-18', icon: 'numeric-1-circle-outline' },
+  { id: '10', name: 'Under-16', icon: 'numeric-6-circle-outline' },
+  { id: '11', name: 'Under-14', icon: 'numeric-4-circle-outline' },
+  { id: '12', name: 'Masters', icon: 'account-star' },
+  { id: '13', name: 'Mixed', icon: 'account-group' },
+  { id: '14', name: 'Indoor', icon: 'home' },
+  { id: '15', name: 'Outdoor', icon: 'tree' },
+  { id: '16', name: 'Professional', icon: 'medal' },
+  { id: '17', name: 'Amateur', icon: 'trophy-outline' },
+  { id: '18', name: 'School', icon: 'school' },
+  { id: '19', name: 'Club', icon: 'shield' },
+  { id: '20', name: 'National', icon: 'flag' },
+  { id: '21', name: 'International', icon: 'earth' }
 ];
 
 // Define types for the component props
@@ -87,14 +42,29 @@ type TournamentsScreenProps = {
 type Tournament = {
   id: string;
   title: string;
+  description?: string;
   location: string;
-  date: string;
+  full_address?: string;
+  start_date: string;
+  end_date: string;
+  registration_deadline?: string;
   status: string;
-  statusColor: string;
-  imageUrl: string;
+  status_color: string;
+  image_url?: string;
+  teams_count: number;
+  max_teams?: number;
+  prize_pool?: string;
+  entry_fee?: string;
+  created_at?: string;
+  updated_at?: string;
+  organizer_id?: string;
+  organizer_name?: string;
+  organizer_logo?: string;
+  organizer_contact?: string;
   categories: string[];
-  teams: number;
-  prize: string;
+  schedule?: any[];
+  rules?: string[];
+  registered_teams?: any[];
 };
 
 const TournamentsScreen = ({ navigation }: TournamentsScreenProps) => {
@@ -103,7 +73,10 @@ const TournamentsScreen = ({ navigation }: TournamentsScreenProps) => {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('1'); // Default to 'All'
-  const [filteredTournaments, setFilteredTournaments] = useState(tournamentsData);
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [filteredTournaments, setFilteredTournaments] = useState<Tournament[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -124,37 +97,74 @@ const TournamentsScreen = ({ navigation }: TournamentsScreenProps) => {
       })
     ]).start();
   }, []);
+
+  // Fetch tournaments from Supabase
+  const fetchTournaments = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { data, error } = await supabase
+        .from('tournament_details_view')
+        .select('*');
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data) {
+        // Format the data to match our Tournament type
+        const formattedData: Tournament[] = data.map(tournament => ({
+          ...tournament,
+          // Ensure categories is always an array
+          categories: tournament.categories || [],
+        }));
+        
+        setTournaments(formattedData);
+        setFilteredTournaments(formattedData);
+      }
+    } catch (error: any) {
+      console.error('Error fetching tournaments:', error);
+      setError(error.message || 'Failed to fetch tournaments');
+      Alert.alert('Error', 'Failed to load tournaments. Please try again.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+  
+  // Fetch tournaments on component mount
+  useEffect(() => {
+    fetchTournaments();
+  }, []);
   
   // Handle refresh
   const onRefresh = () => {
     setRefreshing(true);
-    // Simulate data fetching
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1500);
+    fetchTournaments();
   };
   
   // Handle search
-  const onChangeSearch = (query) => {
+  const onChangeSearch = (query: string) => {
     setSearchQuery(query);
     filterTournaments(query, activeFilter);
   };
   
   // Handle filter change
-  const handleFilterChange = (filterId) => {
+  const handleFilterChange = (filterId: string) => {
     setActiveFilter(filterId);
     filterTournaments(searchQuery, filterId);
   };
   
   // Filter tournaments based on search query and category filter
-  const filterTournaments = (query, filter) => {
-    let filtered = tournamentsData;
+  const filterTournaments = (query: string, filter: string) => {
+    let filtered = [...tournaments];
     
     // Apply search filter
     if (query) {
       filtered = filtered.filter(tournament => 
-        tournament.title.toLowerCase().includes(query.toLowerCase()) ||
-        tournament.location.toLowerCase().includes(query.toLowerCase())
+        (tournament.title ? tournament.title.toLowerCase().includes(query.toLowerCase()) : false) ||
+        (tournament.location ? tournament.location.toLowerCase().includes(query.toLowerCase()) : false)
       );
     }
     
@@ -162,8 +172,10 @@ const TournamentsScreen = ({ navigation }: TournamentsScreenProps) => {
     if (filter !== '1') { // If not 'All'
       const filterName = filterCategories.find(cat => cat.id === filter)?.name;
       filtered = filtered.filter(tournament => 
-        tournament.categories.some(category => 
-          category.toLowerCase().includes(filterName.toLowerCase())
+        tournament.categories && tournament.categories.some(category => 
+          category && typeof category === 'string' ? 
+            category.toLowerCase().includes(filterName?.toLowerCase() || '') : 
+            false
         )
       );
     }
@@ -171,43 +183,62 @@ const TournamentsScreen = ({ navigation }: TournamentsScreenProps) => {
     setFilteredTournaments(filtered);
   };
   
-  // Pre-create animation values for tournament cards
-  const cardAnimations = tournamentsData.map((_, index) => ({
-    scale: useRef(new Animated.Value(0.9)).current,
-    opacity: useRef(new Animated.Value(0)).current,
-    delay: index * 150
-  }));
-  
-  // Run animations for tournament cards
-  useEffect(() => {
-    cardAnimations.forEach((anim) => {
-      Animated.parallel([
-        Animated.timing(anim.scale, {
-          toValue: 1,
-          duration: 500,
-          delay: anim.delay,
-          useNativeDriver: true
-        }),
-        Animated.timing(anim.opacity, {
-          toValue: 1,
-          duration: 500,
-          delay: anim.delay,
-          useNativeDriver: true
-        })
-      ]).start();
+  // Format date range for display
+  const formatDateRange = (startDate: string, endDate: string) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    // Format the dates
+    const startFormatted = start.toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
     });
-  }, []);
+    
+    const endFormatted = end.toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+    
+    return `${startFormatted} - ${endFormatted}`;
+  };
+  
+  // Create a single set of animation values that we'll reuse
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  
+  // Run entrance animations when tournaments change
+  useEffect(() => {
+    // Reset animations
+    scaleAnim.setValue(0.9);
+    opacityAnim.setValue(0);
+    
+    // Start animations
+    Animated.parallel([
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true
+      })
+    ]).start();
+  }, [tournaments]);
   
   // Render tournament card
   const renderTournamentCard = ({ item, index }: { item: Tournament, index: number }) => {
-    // Get pre-created animation values
-    const { scale: cardScale, opacity: cardOpacity } = cardAnimations[index < cardAnimations.length ? index : 0];
+    // Format date range
+    const dateRange = item.start_date && item.end_date ? 
+      formatDateRange(item.start_date, item.end_date) : 'TBD';
     
     return (
       <Animated.View 
         style={{
-          opacity: cardOpacity,
-          transform: [{ scale: cardScale }],
+          opacity: opacityAnim,
+          transform: [{ scale: scaleAnim }],
           marginBottom: 16
         }}
       >
@@ -216,14 +247,14 @@ const TournamentsScreen = ({ navigation }: TournamentsScreenProps) => {
           onPress={() => navigation.navigate('TournamentDetail', { tournamentId: item.id })}
         >
           <Image
-            source={{ uri: item.imageUrl }}
+            source={{ uri: item.image_url || DEFAULT_TOURNAMENT_IMAGE }}
             style={styles.tournamentImage}
             resizeMode="cover"
           />
           
           {/* Status badge */}
-          <View style={[styles.statusBadge, { backgroundColor: item.statusColor }]}>
-            <Text style={styles.statusText}>{item.status}</Text>
+          <View style={[styles.statusBadge, { backgroundColor: item.status_color || '#666666' }]}>
+            <Text style={styles.statusText}>{item.status || 'Draft'}</Text>
           </View>
           
           <Card.Content style={styles.cardContent}>
@@ -231,7 +262,7 @@ const TournamentsScreen = ({ navigation }: TournamentsScreenProps) => {
             
             <View style={styles.infoRow}>
               <Icon name="calendar" size={16} color="#0066CC" style={styles.infoIcon} />
-              <Text style={styles.infoText}>{item.date}</Text>
+              <Text style={styles.infoText}>{dateRange}</Text>
             </View>
             
             <View style={styles.infoRow}>
@@ -244,24 +275,30 @@ const TournamentsScreen = ({ navigation }: TournamentsScreenProps) => {
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
                 <Icon name="account-group" size={18} color="#666666" />
-                <Text style={styles.statText}>{item.teams} Teams</Text>
+                <Text style={styles.statText}>{item.teams_count || 0} Teams</Text>
               </View>
               
               <View style={styles.statItem}>
                 <Icon name="trophy" size={18} color="#666666" />
-                <Text style={styles.statText}>{item.prize}</Text>
+                <Text style={styles.statText}>{item.prize_pool || 'TBD'}</Text>
               </View>
             </View>
             
             <View style={styles.categoriesContainer}>
-              {item.categories.map((category, idx) => (
-                <Chip 
-                  key={idx} 
-                  style={styles.categoryChip}
-                >
-                  <Text style={styles.categoryChipText}>{category}</Text>
+              {item.categories && item.categories.length > 0 ? (
+                item.categories.map((category, idx) => (
+                  <Chip 
+                    key={idx} 
+                    style={styles.categoryChip}
+                  >
+                    <Text style={styles.categoryChipText}>{category}</Text>
+                  </Chip>
+                ))
+              ) : (
+                <Chip style={styles.categoryChip}>
+                  <Text style={styles.categoryChipText}>General</Text>
                 </Chip>
-              ))}
+              )}
             </View>
           </Card.Content>
         </Card>
@@ -323,8 +360,11 @@ const TournamentsScreen = ({ navigation }: TournamentsScreenProps) => {
               <Text style={styles.headerTitle}>Tournaments</Text>
               <Text style={styles.headerSubtitle}>Find and join hockey tournaments</Text>
             </View>
-            <TouchableOpacity style={styles.iconButton}>
-              <Icon name="filter-variant" size={24} color="#333333" />
+            <TouchableOpacity 
+              style={styles.iconButton}
+              onPress={() => navigation.navigate('CreateTournament')}
+            >
+              <Icon name="plus" size={24} color="#0066CC" />
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -368,28 +408,46 @@ const TournamentsScreen = ({ navigation }: TournamentsScreenProps) => {
         </Animated.View>
         
         {/* Main Content */}
-        <FlatList
-          data={filteredTournaments}
-          renderItem={renderTournamentCard}
-          keyExtractor={item => item.id}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={['#0066CC']}
-              tintColor={'#0066CC'}
-            />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Icon name="trophy-outline" size={60} color="#CCCCCC" />
-              <Text style={styles.emptyText}>No tournaments found</Text>
-              <Text style={styles.emptySubtext}>Try adjusting your search or filters</Text>
-            </View>
-          }
-        />
+        {loading && !refreshing ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#0066CC" />
+            <Text style={styles.loadingText}>Loading tournaments...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={filteredTournaments}
+            renderItem={renderTournamentCard}
+            keyExtractor={item => item.id.toString()}
+            contentContainerStyle={[styles.listContent, filteredTournaments.length === 0 && styles.emptyListContent]}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={['#0066CC']}
+                tintColor={'#0066CC'}
+              />
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Icon name="trophy-outline" size={60} color="#CCCCCC" />
+                <Text style={styles.emptyText}>
+                  {error ? 'Error loading tournaments' : searchQuery || activeFilter !== '1' ? 'No tournaments found' : 'No tournaments available'}
+                </Text>
+                <Text style={styles.emptySubtext}>
+                  {error ? 'Pull down to try again' : 
+                   searchQuery || activeFilter !== '1' ? 'Try adjusting your search or filters' : 
+                   'Create your first tournament by tapping the + button'}
+                </Text>
+                {error && (
+                  <TouchableOpacity style={styles.retryButton} onPress={fetchTournaments}>
+                    <Text style={styles.retryButtonText}>Retry</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            }
+          />
+        )}
         
         {/* Floating Action Button */}
         <TouchableOpacity 
@@ -413,7 +471,7 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#FFFFFF',
-    paddingTop: 10,
+    paddingTop: 30,
     paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#EEEEEE',
@@ -581,9 +639,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   emptyContainer: {
-    alignItems: 'center',
+    flex: 1,
     justifyContent: 'center',
-    paddingVertical: 60,
+    alignItems: 'center',
+    padding: 20,
   },
   emptyText: {
     fontSize: 18,
@@ -594,7 +653,35 @@ const styles = StyleSheet.create({
   emptySubtext: {
     fontSize: 14,
     color: '#999999',
+    textAlign: 'center',
     marginTop: 8,
+  },
+  emptyListContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666666',
+    marginTop: 16,
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    backgroundColor: '#0066CC',
+    borderRadius: 25,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
   fab: {
     position: 'absolute',
