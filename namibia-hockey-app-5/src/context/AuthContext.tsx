@@ -18,6 +18,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string, role: string) => Promise<boolean>;
+  resetPassword: (email: string) => Promise<boolean>;
   logout: () => Promise<void>;
   loading: boolean;
   error: string | null;
@@ -29,6 +30,7 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   login: async () => false,
   register: async () => false,
+  resetPassword: async () => false,
   logout: async () => {},
   loading: false,
   error: null,
@@ -347,6 +349,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Reset password with Supabase
+  const resetPassword = async (email: string): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      console.log('AuthContext - Sending password reset email to:', email);
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'com.namibianhockey://reset-password',
+      });
+      
+      if (error) {
+        console.error('AuthContext - Error sending reset email:', error.message);
+        setError(error.message);
+        return false;
+      }
+      
+      console.log('AuthContext - Password reset email sent successfully');
+      return true;
+    } catch (err: any) {
+      console.error('AuthContext - Unexpected error during password reset:', err);
+      setError(err.message || 'An error occurred during password reset');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Logout with Supabase
   const logout = async () => {
     setLoading(true);
@@ -374,6 +405,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isAuthenticated: !!user,
         login,
         register,
+        resetPassword,
         logout,
         loading,
         error,

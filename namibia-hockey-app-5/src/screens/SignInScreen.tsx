@@ -70,8 +70,8 @@ const SignInScreen = ({ navigation }: { navigation: any }) => {
 
   // Handle forgot password
   const handleForgotPassword = () => {
-    // Navigate to forgot password screen or show modal
-    console.log('Forgot password');
+    // Navigate to forgot password screen
+    navigation.navigate('ForgotPassword');
   };
 
   // Handle sign up navigation

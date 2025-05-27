@@ -30,6 +30,7 @@ import ChangePasswordScreen from './src/screens/ChangePasswordScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
 import SignInScreen from './src/screens/SignInScreen';
 import SignUpScreen from './src/screens/SignUpScreen';
+import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import TabNavigator from './src/navigation/TabNavigator';
 import { AuthProvider } from './src/context/AuthContext';
@@ -74,6 +75,7 @@ export default function App() {
               <Stack.Screen name="Notifications" component={NotificationsScreen} />
               <Stack.Screen name="SignIn" component={SignInScreen} />
               <Stack.Screen name="SignUp" component={SignUpScreen} />
+              <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
               <Stack.Screen name="Settings" component={SettingsScreen} />
             </Stack.Navigator>
             </NavigationContainer>
