@@ -899,28 +899,30 @@ const TournamentDetailScreen = ({ route, navigation }: TournamentDetailProps) =>
             </TouchableOpacity>
           </View>
           
-          {/* Registration Button */}
-          <View style={styles.registerButtonContainer}>
-            <Button
-              mode="contained"
-              style={styles.registerButton}
-              labelStyle={styles.registerButtonLabel}
-              onPress={openTeamSelectionModal}
-              disabled={isRegistered}
-              loading={registering}
-            >
-              {isRegistered ? 'Already Registered' : 'Register for Tournament'}
-            </Button>
-            {tournament.registration_deadline && (
-              <Text style={styles.registrationDeadline}>
-                Registration deadline: {new Date(tournament.registration_deadline).toLocaleDateString('en-US', {
-                  month: 'long',
-                  day: 'numeric',
-                  year: 'numeric'
-                })}
-              </Text>
-            )}
-          </View>
+          {/* Registration Button - only visible to admin users */}
+          {user?.role === 'admin' && (
+            <View style={styles.registerButtonContainer}>
+              <Button
+                mode="contained"
+                style={styles.registerButton}
+                labelStyle={styles.registerButtonLabel}
+                onPress={openTeamSelectionModal}
+                disabled={isRegistered}
+                loading={registering}
+              >
+                {isRegistered ? 'Already Registered' : 'Register for Tournament'}
+              </Button>
+              {tournament.registration_deadline && (
+                <Text style={styles.registrationDeadline}>
+                  Registration deadline: {new Date(tournament.registration_deadline).toLocaleDateString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric'
+                  })}
+                </Text>
+              )}
+            </View>
+          )}
         </Animated.View>
       </Animated.ScrollView>
       

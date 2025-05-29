@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { StyleSheet, View, ScrollView, Image, TouchableOpacity, Dimensions, Animated, StatusBar, Share, ActivityIndicator } from 'react-native';
-import { Text, Card, Chip, Divider, Avatar, List, Button, DataTable, Snackbar } from 'react-native-paper';
+import { StyleSheet, View, ScrollView, Image, TouchableOpacity, Dimensions, Animated, StatusBar, Share, ActivityIndicator, Modal } from 'react-native';
+import { Text, Card, Chip, Divider, Avatar, List, Button, DataTable, Snackbar, Portal, Provider } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -80,6 +80,9 @@ const TeamDetailScreen = ({ route, navigation }: TeamDetailProps) => {
   const [error, setError] = useState<string | null>(null);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [rosterModalVisible, setRosterModalVisible] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [playerModalVisible, setPlayerModalVisible] = useState(false);
   
   // Check if current user has admin role
   const checkUserRole = async () => {
@@ -254,7 +257,8 @@ const TeamDetailScreen = ({ route, navigation }: TeamDetailProps) => {
   }
   
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <Provider>
+      <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       
       {/* Animated Header */}
@@ -475,7 +479,7 @@ const TeamDetailScreen = ({ route, navigation }: TeamDetailProps) => {
                     <Text style={styles.addButtonText}>Add Player</Text>
                   </TouchableOpacity>
                 )}
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => setRosterModalVisible(true)}>
                   <Text style={styles.viewAllText}>View Roster</Text>
                 </TouchableOpacity>
               </View>
@@ -494,14 +498,19 @@ const TeamDetailScreen = ({ route, navigation }: TeamDetailProps) => {
                 
                 {team?.roster && team.roster.length > 0 ? (
                   team.roster.map((player: Player) => (
-                    <DataTable.Row key={player.id} style={styles.tableRow}>
-                      <DataTable.Cell style={{ flex: 0.5 }}>{player.number}</DataTable.Cell>
-                      <DataTable.Cell>{player.name}</DataTable.Cell>
-                      <DataTable.Cell style={{ flex: 0.5 }}>{player.position}</DataTable.Cell>
-                      <DataTable.Cell numeric>{player.goals}</DataTable.Cell>
-                      <DataTable.Cell numeric>{player.assists}</DataTable.Cell>
-                      <DataTable.Cell numeric>{player.points}</DataTable.Cell>
-                    </DataTable.Row>
+                    <TouchableOpacity key={player.id} onPress={() => {
+                      setSelectedPlayer(player);
+                      setPlayerModalVisible(true);
+                    }}>
+                      <DataTable.Row style={styles.tableRow}>
+                        <DataTable.Cell style={{ flex: 0.5 }}>{player.number}</DataTable.Cell>
+                        <DataTable.Cell>{player.name}</DataTable.Cell>
+                        <DataTable.Cell style={{ flex: 0.5 }}>{player.position}</DataTable.Cell>
+                        <DataTable.Cell numeric>{player.goals}</DataTable.Cell>
+                        <DataTable.Cell numeric>{player.assists}</DataTable.Cell>
+                        <DataTable.Cell numeric>{player.points}</DataTable.Cell>
+                      </DataTable.Row>
+                    </TouchableOpacity>
                   ))
                 ) : (
                   <DataTable.Row style={styles.tableRow}>
@@ -603,7 +612,10 @@ const TeamDetailScreen = ({ route, navigation }: TeamDetailProps) => {
           <Icon name="calendar" size={24} color="#666666" />
           <Text style={styles.bottomBarButtonText}>Schedule</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.bottomBarButton}>
+        <TouchableOpacity 
+          style={styles.bottomBarButton}
+          onPress={() => setRosterModalVisible(true)}
+        >
           <Icon name="account-group" size={24} color="#666666" />
           <Text style={styles.bottomBarButtonText}>Roster</Text>
         </TouchableOpacity>
@@ -618,14 +630,129 @@ const TeamDetailScreen = ({ route, navigation }: TeamDetailProps) => {
         visible={snackbarVisible}
         onDismiss={() => setSnackbarVisible(false)}
         duration={3000}
-        action={{
-          label: 'Dismiss',
-          onPress: () => setSnackbarVisible(false),
-        }}
+        style={styles.snackbar}
       >
         {error}
       </Snackbar>
+      
+      {/* Roster Bottom Sheet */}
+      <Portal>
+        <Modal
+          visible={rosterModalVisible}
+          onDismiss={() => setRosterModalVisible(false)}
+          contentContainerStyle={styles.modalContainer}
+        >
+          <View style={styles.bottomSheet}>
+            <View style={styles.bottomSheetHeader}>
+              <Text style={styles.bottomSheetTitle}>{team?.name} Roster</Text>
+              <TouchableOpacity 
+                style={styles.closeButton}
+                onPress={() => setRosterModalVisible(false)}
+              >
+                <Icon name="close" size={24} color="#333333" />
+              </TouchableOpacity>
+            </View>
+            
+            <DataTable style={styles.rosterTable}>
+              <DataTable.Header style={styles.tableHeader}>
+                <DataTable.Title style={{ flex: 0.5 }}>#</DataTable.Title>
+                <DataTable.Title>Player</DataTable.Title>
+                <DataTable.Title style={{ flex: 0.5 }}>Pos</DataTable.Title>
+                <DataTable.Title numeric>G</DataTable.Title>
+                <DataTable.Title numeric>A</DataTable.Title>
+                <DataTable.Title numeric>PTS</DataTable.Title>
+              </DataTable.Header>
+              
+              {team?.roster && team.roster.length > 0 ? (
+                team.roster.map((player: Player) => (
+                  <TouchableOpacity key={`roster-${player.id}`} onPress={() => {
+                    setSelectedPlayer(player);
+                    setPlayerModalVisible(true);
+                  }}>
+                    <DataTable.Row style={styles.tableRow}>
+                      <DataTable.Cell style={{ flex: 0.5 }}>{player.number}</DataTable.Cell>
+                      <DataTable.Cell>{player.name}</DataTable.Cell>
+                      <DataTable.Cell style={{ flex: 0.5 }}>{player.position}</DataTable.Cell>
+                      <DataTable.Cell numeric>{player.goals}</DataTable.Cell>
+                      <DataTable.Cell numeric>{player.assists}</DataTable.Cell>
+                      <DataTable.Cell numeric>{player.points}</DataTable.Cell>
+                    </DataTable.Row>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <DataTable.Row style={styles.tableRow}>
+                  <DataTable.Cell style={{ flex: 4, alignItems: 'center' }}>
+                    <Text style={{ textAlign: 'center' }}>No players in roster</Text>
+                  </DataTable.Cell>
+                </DataTable.Row>
+              )}
+            </DataTable>
+          </View>
+        </Modal>
+        
+        {/* Player Details Modal */}
+        <Modal
+          visible={playerModalVisible}
+          onDismiss={() => setPlayerModalVisible(false)}
+          contentContainerStyle={styles.playerModalContainer}
+        >
+          {selectedPlayer && (
+            <View style={styles.playerModalContent}>
+              <View style={styles.playerModalHeader}>
+                <Text style={styles.playerModalTitle}>Player Details</Text>
+                <TouchableOpacity 
+                  style={styles.closeButton}
+                  onPress={() => setPlayerModalVisible(false)}
+                >
+                  <Icon name="close" size={24} color="#333333" />
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.playerProfile}>
+                <View style={styles.playerNumberBadge}>
+                  <Text style={styles.playerNumberText}>{selectedPlayer.number}</Text>
+                </View>
+                <View style={styles.playerInfo}>
+                  <Text style={styles.playerName}>{selectedPlayer.name}</Text>
+                  <Chip style={styles.positionChip}>{selectedPlayer.position}</Chip>
+                </View>
+              </View>
+              
+              <Divider style={styles.divider} />
+              
+              <View style={styles.statsContainer}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>{selectedPlayer.goals}</Text>
+                  <Text style={styles.statLabel}>Goals</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>{selectedPlayer.assists}</Text>
+                  <Text style={styles.statLabel}>Assists</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>{selectedPlayer.points}</Text>
+                  <Text style={styles.statLabel}>Points</Text>
+                </View>
+              </View>
+              
+              {isAdmin && (
+                <Button 
+                  mode="contained" 
+                  style={styles.editButton}
+                  onPress={() => {
+                    setPlayerModalVisible(false);
+                    navigation.navigate('EditPlayer', { teamId: team?.id, playerId: selectedPlayer.id });
+                  }}
+                >
+                  Edit Player
+                </Button>
+              )}
+            </View>
+          )}
+        </Modal>
+      </Portal>
     </SafeAreaView>
+    </Provider>
   );
 };
 
@@ -958,6 +1085,144 @@ const styles = StyleSheet.create({
   tableRow: {
     borderBottomWidth: 1,
     borderBottomColor: '#EEEEEE',
+  },
+  snackbar: {
+    backgroundColor: '#4CAF50',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    margin: 0,
+  },
+  bottomSheet: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 30,
+    maxHeight: '80%',
+  },
+  bottomSheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEEEEE',
+  },
+  bottomSheetTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333333',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  rosterTable: {
+    marginTop: 8,
+  },
+  playerModalContainer: {
+    margin: 20,
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    maxWidth: 350,
+    alignSelf: 'center',
+    width: '80%',
+    maxHeight: '60%',
+  },
+  playerModalContent: {
+    width: '100%',
+    paddingHorizontal: 8,
+  },
+  playerModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEEEEE',
+  },
+  playerModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333333',
+  },
+  playerProfile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  playerNumberBadge: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#0066CC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  playerNumberText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  playerInfo: {
+    flex: 1,
+  },
+  playerName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333333',
+    marginBottom: 6,
+  },
+  positionChip: {
+    backgroundColor: 'rgba(0, 102, 204, 0.1)',
+    alignSelf: 'flex-start',
+  },
+  divider: {
+    marginVertical: 12,
+    height: 1,
+    backgroundColor: '#EEEEEE',
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    backgroundColor: '#F5F7FA',
+    borderRadius: 10,
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333333',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666666',
+    marginTop: 2,
+  },
+  editButton: {
+    marginTop: 16,
+    backgroundColor: '#0066CC',
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginHorizontal: 8,
   },
   scheduleCard: {
     borderRadius: 16,

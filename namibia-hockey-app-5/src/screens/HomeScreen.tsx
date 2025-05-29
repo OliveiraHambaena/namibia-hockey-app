@@ -8,30 +8,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';
 
-// Mock data for carousel
-const carouselData = [
-  {
-    id: '1',
-    title: 'LIVE: Finals Match',
-    subtitle: 'Maple Leafs vs Bruins',
-    imageUrl: 'https://via.placeholder.com/300x150/0066CC/FFFFFF?text=Live+Match',
-    type: 'match'
-  },
-  {
-    id: '2',
-    title: 'Tournament Registration',
-    subtitle: 'Deadline: May 15, 2025',
-    imageUrl: 'https://via.placeholder.com/300x150/FF6600/FFFFFF?text=Tournament+Registration',
-    type: 'registration'
-  },
-  {
-    id: '3',
-    title: 'Latest Hockey News',
-    subtitle: 'Season highlights and player interviews',
-    imageUrl: 'https://via.placeholder.com/300x150/00A651/FFFFFF?text=Hockey+News',
-    type: 'news'
-  }
-];
+// Types for carousel data
+type CarouselItem = {
+  id: string;
+  title: string;
+  subtitle: string;
+  imageUrl: string;
+  type: string;
+  navigationParams?: any;
+};
+
+// Initial empty carousel data
+const initialCarouselData: CarouselItem[] = [];
 
 // Mock data for quick access tiles
 const quickAccessData = [
@@ -93,6 +81,48 @@ type NewsArticle = {
   category_icon: string;
 };
 
+// Define type for game from the games table
+type Game = {
+  id: string;
+  home_team_id: string;
+  away_team_id: string;
+  date: string;
+  venue: string;
+  home_score: number | null;
+  away_score: number | null;
+  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+  created_at: string;
+  updated_at: string;
+  home_team?: {
+    id: string;
+    name: string;
+    logo_url: string;
+  };
+  away_team?: {
+    id: string;
+    name: string;
+    logo_url: string;
+  };
+};
+
+// Define type for tournament
+type Tournament = {
+  id: string;
+  title: string;
+  description: string;
+  location: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+  image_url: string;
+  max_teams: number;
+  registered_teams: number;
+  prize_pool: number;
+  entry_fee: number;
+  created_at: string;
+  updated_at: string;
+};
+
 const HomeScreen = ({ navigation }: { navigation: any }) => {
   const { user } = useAuth();
   const theme = useTheme();
@@ -107,6 +137,20 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
   const [newsData, setNewsData] = useState<NewsArticle[]>([]);
   const [newsLoading, setNewsLoading] = useState(true);
   const [newsError, setNewsError] = useState<string | null>(null);
+  
+  // State for today's match
+  const [todayMatch, setTodayMatch] = useState<Game | null>(null);
+  const [matchLoading, setMatchLoading] = useState(true);
+  const [matchError, setMatchError] = useState<string | null>(null);
+  
+  // State for carousel data
+  const [carouselData, setCarouselData] = useState<CarouselItem[]>(initialCarouselData);
+  const [carouselLoading, setCarouselLoading] = useState(true);
+  
+  // State for upcoming events
+  const [upcomingEvents, setUpcomingEvents] = useState<Tournament[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
+  
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   
@@ -140,20 +184,226 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
     }
   };
   
+  // Fetch today's match from Supabase
+  const fetchTodayMatch = async () => {
+    try {
+      setMatchLoading(true);
+      setMatchError(null);
+      
+      // Get today's date in ISO format and set time to start of day
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString();
+      
+      // Get tomorrow's date in ISO format
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = tomorrow.toISOString();
+      
+      // Fetch games scheduled for today with team information
+      const { data, error } = await supabase
+        .from('games')
+        .select(`
+          *,
+          home_team:home_team_id(id, name, logo_url),
+          away_team:away_team_id(id, name, logo_url)
+        `)
+        .gte('date', todayStr)
+        .lt('date', tomorrowStr)
+        .order('date', { ascending: true })
+        .limit(1);
+      
+      if (error) {
+        console.error('Error fetching today\'s match:', error.message);
+        setMatchError(error.message);
+      } else if (data && data.length > 0) {
+        setTodayMatch(data[0] as Game);
+      } else {
+        // If no match today, get the next upcoming match
+        const { data: upcomingData, error: upcomingError } = await supabase
+          .from('games')
+          .select(`
+            *,
+            home_team:home_team_id(id, name, logo_url),
+            away_team:away_team_id(id, name, logo_url)
+          `)
+          .gte('date', todayStr)
+          .order('date', { ascending: true })
+          .limit(1);
+          
+        if (upcomingError) {
+          console.error('Error fetching upcoming match:', upcomingError.message);
+          setMatchError(upcomingError.message);
+        } else if (upcomingData && upcomingData.length > 0) {
+          setTodayMatch(upcomingData[0] as Game);
+        }
+      }
+    } catch (err: any) {
+      console.error('Unexpected error fetching match:', err.message);
+      setMatchError(err.message);
+    } finally {
+      setMatchLoading(false);
+    }
+  };
+  
+  // Fetch data for carousel (live matches, tournament registrations, latest news)
+  const fetchCarouselData = async () => {
+    try {
+      setCarouselLoading(true);
+      const carouselItems: CarouselItem[] = [];
+      
+      // 1. Fetch live matches
+      const { data: liveMatches, error: liveMatchesError } = await supabase
+        .from('games')
+        .select(`
+          *,
+          home_team:home_team_id(id, name, logo_url),
+          away_team:away_team_id(id, name, logo_url)
+        `)
+        .eq('status', 'in_progress')
+        .limit(1);
+      
+      if (!liveMatchesError && liveMatches && liveMatches.length > 0) {
+        const match = liveMatches[0] as Game;
+        carouselItems.push({
+          id: match.id,
+          title: 'LIVE: Hockey Match',
+          subtitle: `${match.home_team?.name || 'Home Team'} vs ${match.away_team?.name || 'Away Team'}`,
+          imageUrl: 'https://via.placeholder.com/300x150/0066CC/FFFFFF?text=Live+Match',
+          type: 'match',
+          navigationParams: { matchId: match.id }
+        });
+      }
+      
+      // 2. Fetch open tournament registrations
+      const { data: tournaments, error: tournamentsError } = await supabase
+        .from('tournaments')
+        .select('*')
+        .eq('status', 'registration_open')
+        .limit(1);
+      
+      if (!tournamentsError && tournaments && tournaments.length > 0) {
+        const tournament = tournaments[0] as Tournament;
+        const deadline = new Date(tournament.end_date).toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'short', 
+          day: 'numeric' 
+        });
+        
+        carouselItems.push({
+          id: tournament.id,
+          title: 'Tournament Registration',
+          subtitle: `Deadline: ${deadline}`,
+          imageUrl: tournament.image_url || 'https://via.placeholder.com/300x150/FF6600/FFFFFF?text=Tournament+Registration',
+          type: 'registration',
+          navigationParams: { tournamentId: tournament.id }
+        });
+      }
+      
+      // 3. Add latest news if available
+      if (newsData && newsData.length > 0) {
+        const latestNews = newsData[0];
+        carouselItems.push({
+          id: latestNews.id,
+          title: 'Latest Hockey News',
+          subtitle: latestNews.title,
+          imageUrl: latestNews.image_url || 'https://via.placeholder.com/300x150/00A651/FFFFFF?text=Hockey+News',
+          type: 'news',
+          navigationParams: { newsId: latestNews.id }
+        });
+      }
+      
+      // If we have no real data, add placeholder items
+      if (carouselItems.length === 0) {
+        carouselItems.push(
+          {
+            id: '1',
+            title: 'LIVE: Finals Match',
+            subtitle: 'Maple Leafs vs Bruins',
+            imageUrl: 'https://via.placeholder.com/300x150/0066CC/FFFFFF?text=Live+Match',
+            type: 'match'
+          },
+          {
+            id: '2',
+            title: 'Tournament Registration',
+            subtitle: 'Deadline: May 15, 2025',
+            imageUrl: 'https://via.placeholder.com/300x150/FF6600/FFFFFF?text=Tournament+Registration',
+            type: 'registration'
+          },
+          {
+            id: '3',
+            title: 'Latest Hockey News',
+            subtitle: 'Season highlights and player interviews',
+            imageUrl: 'https://via.placeholder.com/300x150/00A651/FFFFFF?text=Hockey+News',
+            type: 'news'
+          }
+        );
+      }
+      
+      setCarouselData(carouselItems);
+    } catch (err: any) {
+      console.error('Error fetching carousel data:', err.message);
+    } finally {
+      setCarouselLoading(false);
+    }
+  };
+  
+  // Fetch upcoming events/tournaments
+  const fetchUpcomingEvents = async () => {
+    try {
+      setEventsLoading(true);
+      
+      const { data, error } = await supabase
+        .from('tournaments')
+        .select('*')
+        .or('status.eq.registration_open,status.eq.upcoming')
+        .order('start_date', { ascending: true })
+        .limit(3);
+      
+      if (error) {
+        console.error('Error fetching upcoming events:', error.message);
+      } else {
+        setUpcomingEvents(data as Tournament[] || []);
+      }
+    } catch (err: any) {
+      console.error('Unexpected error fetching events:', err.message);
+    } finally {
+      setEventsLoading(false);
+    }
+  };
+  
   // Handle refresh
   const onRefresh = () => {
     setRefreshing(true);
-    // Fetch real data
-    fetchLatestNews().then(() => {
+    // Fetch all data
+    Promise.all([
+      fetchLatestNews(),
+      fetchTodayMatch(),
+      fetchUpcomingEvents()
+    ]).then(() => {
+      fetchCarouselData();
+      setRefreshing(false);
+    }).catch(() => {
       setRefreshing(false);
     });
   };
   
-  // Pre-create animation values for carousel items
-  const carouselAnimations = carouselData.map(() => ({
-    scale: useRef(new Animated.Value(0.9)).current,
-    opacity: useRef(new Animated.Value(0.8)).current
-  }));
+  // Create animation values for carousel items
+  const [carouselAnimations, setCarouselAnimations] = useState<Array<{
+    scale: Animated.Value;
+    opacity: Animated.Value;
+  }>>([]);
+  
+  // Update carousel animations when carousel data changes
+  useEffect(() => {
+    if (carouselData.length > 0) {
+      const newAnimations = carouselData.map(() => ({
+        scale: new Animated.Value(0.9),
+        opacity: new Animated.Value(0.8)
+      }));
+      setCarouselAnimations(newAnimations);
+    }
+  }, [carouselData]);
   
   // Pre-create animation values for quick access tiles
   const tileAnimations = quickAccessData.map((_, index) => ({
@@ -170,10 +420,12 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
     delay: number;
   }>>([]);
   
-  // Fetch news data and run entrance animations when component mounts
+  // Fetch data and run entrance animations when component mounts
   useEffect(() => {
-    // Fetch latest news
+    // Fetch all data
     fetchLatestNews();
+    fetchTodayMatch();
+    fetchUpcomingEvents();
     
     // Run entrance animations
     Animated.parallel([
@@ -190,23 +442,32 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
     ]).start();
   }, []);
   
+  // Fetch carousel data when news, match, or events data changes
+  useEffect(() => {
+    if (!newsLoading && !matchLoading && !eventsLoading) {
+      fetchCarouselData();
+    }
+  }, [newsData, todayMatch, upcomingEvents]);
+  
   // Run animations for carousel items, tiles, and news items
   useEffect(() => {
-    // Animate carousel items
-    carouselAnimations.forEach((anim) => {
-      Animated.parallel([
-        Animated.timing(anim.scale, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true
-        }),
-        Animated.timing(anim.opacity, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true
-        })
-      ]).start();
-    });
+    // Animate carousel items if they exist
+    if (carouselAnimations.length > 0) {
+      carouselAnimations.forEach((anim) => {
+        Animated.parallel([
+          Animated.timing(anim.scale, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true
+          }),
+          Animated.timing(anim.opacity, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true
+          })
+        ]).start();
+      });
+    }
     
     // Animate quick access tiles
     tileAnimations.forEach((anim) => {
@@ -255,6 +516,9 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
   
   // Auto-scroll carousel
   useEffect(() => {
+    // Only set up auto-scroll if we have carousel data
+    if (carouselData.length === 0) return;
+    
     const timer = setInterval(() => {
       if (flatListRef.current) {
         const nextIndex = (activeIndex + 1) % carouselData.length;
@@ -267,7 +531,7 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
     }, 5000);
     
     return () => clearInterval(timer);
-  }, [activeIndex]);
+  }, [activeIndex, carouselData.length]);
 
   // Handle scroll event for carousel
   const handleScroll = Animated.event(
@@ -283,8 +547,11 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
 
   // Render carousel item with animations
   const renderCarouselItem = ({ item, index }: { item: any, index: number }) => {
-    // Get pre-created animation values
-    const { scale, opacity } = carouselAnimations[index];
+    // Get animation values if available, or create default ones
+    const { scale, opacity } = carouselAnimations[index] || {
+      scale: new Animated.Value(1),
+      opacity: new Animated.Value(1)
+    };
     
     // Calculate position for parallax effect
     const position = Animated.subtract(index * width, scrollX);
@@ -601,18 +868,41 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
                 <View style={styles.welcomeContent}>
                   <View style={styles.welcomeTextContainer}>
                     <Text style={styles.welcomeTitle}>Today's Match</Text>
-                    <Text style={styles.welcomeSubtitle}>Coastal Pirates vs Windhoek Warriors</Text>
-                    <Text style={styles.welcomeTime}>7:30 PM CAT</Text>
+                    {matchLoading ? (
+                      <ActivityIndicator size="small" color="white" />
+                    ) : matchError ? (
+                      <Text style={styles.welcomeError}>Could not load match data</Text>
+                    ) : todayMatch ? (
+                      <>
+                        <Text style={styles.welcomeSubtitle}>
+                          {todayMatch.home_team?.name || 'Home Team'} vs {todayMatch.away_team?.name || 'Away Team'}
+                        </Text>
+                        <Text style={styles.welcomeTime}>
+                          {todayMatch.date ? new Date(todayMatch.date).toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true
+                          }) : 'Time TBD'} 
+                          {todayMatch.status === 'in_progress' && <Text style={styles.liveIndicator}> • LIVE</Text>}
+                        </Text>
+                      </>
+                    ) : (
+                      <Text style={styles.welcomeSubtitle}>No matches scheduled for today</Text>
+                    )}
                   </View>
                   <TouchableOpacity 
                     style={styles.welcomeButton}
-                    onPress={() => navigation.navigate('TournamentDetail', { 
-                      id: '1', 
-                      title: 'Coastal Pirates vs Windhoek Warriors',
-                      type: 'match'
-                    })}
+                    onPress={() => {
+                      if (todayMatch) {
+                        navigation.navigate('GameDetail', { 
+                          gameId: todayMatch.id
+                        });
+                      } else {
+                        navigation.navigate('Tournaments');
+                      }
+                    }}
                   >
-                    <Text style={styles.welcomeButtonText}>View Details</Text>
+                    <Text style={styles.welcomeButtonText}>{todayMatch ? 'View Details' : 'See Schedule'}</Text>
                   </TouchableOpacity>
                 </View>
               </LinearGradient>
@@ -629,47 +919,64 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
               }
             ]}
           >
-            <FlatList
-              ref={flatListRef}
-              data={carouselData}
-              renderItem={renderCarouselItem}
-              keyExtractor={item => item.id}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onScroll={handleScroll}
-              scrollEventThrottle={16}
-            />
+            {carouselLoading ? (
+              <View style={styles.carouselLoadingContainer}>
+                <ActivityIndicator size="small" color="#0066CC" />
+                <Text style={styles.loadingText}>Loading...</Text>
+              </View>
+            ) : carouselData.length > 0 ? (
+              <FlatList
+                ref={flatListRef}
+                data={carouselData}
+                renderItem={renderCarouselItem}
+                keyExtractor={item => item.id}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onScroll={handleScroll}
+                scrollEventThrottle={16}
+                initialNumToRender={1}
+                maxToRenderPerBatch={1}
+                windowSize={3}
+              />
+            ) : (
+              <View style={styles.emptyCarouselContainer}>
+                <Icon name="information-outline" size={32} color="#AAAAAA" />
+                <Text style={styles.emptyText}>No featured content available</Text>
+              </View>
+            )}
             
             {/* Pagination dots */}
-            <View style={styles.paginationContainer}>
-              {carouselData.map((_, index) => {
-                const inputRange = [
-                  (index - 1) * width,
-                  index * width,
-                  (index + 1) * width
-                ];
-                
-                const dotWidth = scrollX.interpolate({
-                  inputRange,
-                  outputRange: [8, 16, 8],
-                  extrapolate: 'clamp'
-                });
-                
-                const opacity = scrollX.interpolate({
-                  inputRange,
-                  outputRange: [0.3, 1, 0.3],
-                  extrapolate: 'clamp'
-                });
-                
-                return (
-                  <Animated.View
-                    key={index}
-                    style={[styles.dot, { width: dotWidth, opacity }]}
-                  />
-                );
-              })}
-            </View>
+            {carouselData.length > 0 && (
+              <View style={styles.paginationContainer}>
+                {carouselData.map((_, index) => {
+                  const inputRange = [
+                    (index - 1) * width,
+                    index * width,
+                    (index + 1) * width
+                  ];
+                  
+                  const dotWidth = scrollX.interpolate({
+                    inputRange,
+                    outputRange: [8, 16, 8],
+                    extrapolate: 'clamp'
+                  });
+                  
+                  const opacity = scrollX.interpolate({
+                    inputRange,
+                    outputRange: [0.3, 1, 0.3],
+                    extrapolate: 'clamp'
+                  });
+                  
+                  return (
+                    <Animated.View
+                      key={index}
+                      style={[styles.dot, { width: dotWidth, opacity }]}
+                    />
+                  );
+                })}
+              </View>
+            )}
           </Animated.View>
           
           {/* Quick Access Section */}
@@ -755,33 +1062,65 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
           >
             <View style={styles.sectionTitleContainer}>
               <Text style={styles.sectionTitle}>Upcoming Events</Text>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('Tournaments')}>
                 <Text style={styles.seeAllText}>See All</Text>
               </TouchableOpacity>
             </View>
-            <Card style={styles.eventCard}>
-              <View style={styles.eventDateContainer}>
-                <Text style={styles.eventMonth}>MAY</Text>
-                <Text style={styles.eventDay}>15</Text>
+            
+            {eventsLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#0066CC" />
+                <Text style={styles.loadingText}>Loading events...</Text>
               </View>
-              <View style={styles.eventDetails}>
-                <Text style={styles.eventTitle}>Youth Hockey Tournament</Text>
-                <View style={styles.eventInfo}>
-                  <Icon name="map-marker" size={14} color="#0066CC" style={{ marginRight: 4 }} />
-                  <Text style={styles.eventLocation}>City Arena, Downtown</Text>
-                </View>
-                <View style={styles.eventInfo}>
-                  <Icon name="clock-outline" size={14} color="#0066CC" style={{ marginRight: 4 }} />
-                  <Text style={styles.eventTime}>9:00 AM - 4:00 PM</Text>
-                </View>
-                <Chip 
-                  style={styles.eventStatusChip} 
-                  textStyle={styles.eventStatusText}
-                >
-                  Registration Open
-                </Chip>
+            ) : upcomingEvents.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Icon name="calendar-blank-outline" size={32} color="#AAAAAA" />
+                <Text style={styles.emptyText}>No upcoming events</Text>
               </View>
-            </Card>
+            ) : (
+              upcomingEvents.map((event) => {
+                // Format date
+                const eventDate = new Date(event.start_date);
+                const month = eventDate.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+                const day = eventDate.getDate();
+                
+                return (
+                  <Card 
+                    key={event.id} 
+                    style={styles.eventCard}
+                    onPress={() => navigation.navigate('TournamentDetail', { tournamentId: event.id })}
+                  >
+                    <View style={styles.eventDateContainer}>
+                      <Text style={styles.eventMonth}>{month}</Text>
+                      <Text style={styles.eventDay}>{day}</Text>
+                    </View>
+                    <View style={styles.eventDetails}>
+                      <Text style={styles.eventTitle}>{event.title}</Text>
+                      <View style={styles.eventInfo}>
+                        <Icon name="map-marker" size={14} color="#0066CC" style={{ marginRight: 4 }} />
+                        <Text style={styles.eventLocation}>{event.location}</Text>
+                      </View>
+                      <View style={styles.eventInfo}>
+                        <Icon name="clock-outline" size={14} color="#0066CC" style={{ marginRight: 4 }} />
+                        <Text style={styles.eventTime}>
+                          {new Date(event.start_date).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric' 
+                          })}
+                        </Text>
+                      </View>
+                      <Chip 
+                        style={styles.eventStatusChip} 
+                        textStyle={styles.eventStatusText}
+                      >
+                        {event.status === 'registration_open' ? 'Registration Open' : 'Upcoming'}
+                      </Chip>
+                    </View>
+                  </Card>
+                );
+              })
+            )}
           </Animated.View>
         </Animated.ScrollView>
       </View>
@@ -938,11 +1277,20 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 4,
   },
+  welcomeError: {
+    color: '#FF6B6B',
+    fontSize: 14,
+    marginTop: 4,
+  },
   welcomeSubtitle: {
     color: 'white',
     fontSize: 16,
     marginBottom: 4,
     opacity: 0.9,
+  },
+  liveIndicator: {
+    color: '#FF3B30',
+    fontWeight: 'bold',
   },
   welcomeTime: {
     color: 'white',
@@ -970,6 +1318,22 @@ const styles = StyleSheet.create({
   carouselItem: {
     width: Dimensions.get('window').width,
     justifyContent: 'center',
+  },
+  carouselLoadingContainer: {
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5F7FA',
+    borderRadius: 16,
+    marginHorizontal: 16,
+  },
+  emptyCarouselContainer: {
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5F7FA',
+    borderRadius: 16,
+    marginHorizontal: 16,
   },
   paginationContainer: {
     flexDirection: 'row',

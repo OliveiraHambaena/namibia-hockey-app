@@ -512,10 +512,10 @@ const LeagueScreen = ({ navigation }: { navigation: any }) => {
               <DataTable.Title numeric style={styles.pointsColumn}>PTS</DataTable.Title>
             </DataTable.Header>
 
-            {teams.map((team) => {
+            {teams.map((team, index) => {
               const { wins, losses, overtimeLosses, gamesPlayed } = parseRecord(team.record);
               return (
-                <DataTable.Row key={team.id} onPress={() => navigation.navigate('TeamDetail', { teamId: team.id })}>
+                <DataTable.Row key={`team-${team.id}-${index}`} onPress={() => navigation.navigate('TeamDetail', { teamId: team.id })}>
                   <DataTable.Cell style={{ flex: 3 }}>
                     <View style={styles.teamCell}>
                       <Image source={{ uri: team.logo_url }} style={styles.teamLogo} />
@@ -552,8 +552,8 @@ const LeagueScreen = ({ navigation }: { navigation: any }) => {
             <DataTable.Title numeric style={styles.pointsColumn}>PTS</DataTable.Title>
           </DataTable.Header>
 
-          {topScorersData.map((player) => (
-            <DataTable.Row key={player.id}>
+          {topScorersData.map((player, index) => (
+            <DataTable.Row key={`player-${player.id}-${index}`}>
               <DataTable.Cell style={{ flex: 3 }}>
                 <View style={styles.playerCell}>
                   <Image source={{ uri: player.teamLogo }} style={styles.playerTeamLogo} />
@@ -587,8 +587,8 @@ const LeagueScreen = ({ navigation }: { navigation: any }) => {
             <DataTable.Title numeric style={styles.pointsColumn}>SV%</DataTable.Title>
           </DataTable.Header>
 
-          {goaliesData.map((goalie) => (
-            <DataTable.Row key={goalie.id}>
+          {goaliesData.map((goalie, index) => (
+            <DataTable.Row key={`goalie-${goalie.id}-${index}`}>
               <DataTable.Cell style={{ flex: 3 }}>
                 <View style={styles.playerCell}>
                   <Image source={{ uri: goalie.teamLogo }} style={styles.playerTeamLogo} />

@@ -9,6 +9,8 @@ import {
   Image,
   useWindowDimensions,
   Alert,
+  ImageBackground,
+  RefreshControl,
 } from 'react-native';
 import {
   Avatar,
@@ -23,20 +25,27 @@ import {
   SegmentedButtons,
   Portal,
   Dialog,
+  Surface,
+  FAB,
+  ActivityIndicator,
+  Menu,
+  Appbar,
 } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ProfileScreen = ({ navigation }: { navigation: any }) => {
-  // Get screen dimensions for responsive design
+  // Get screen dimensions and safe area insets for responsive design
   const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const isTablet = width > 768;
 
   // State for active tab
-  const [activeTab, setActiveTab] = useState('stats');
+  const [activeTab, setActiveTab] = useState('settings');
   
   // State for logout dialog
   const [logoutDialogVisible, setLogoutDialogVisible] = useState(false);
@@ -45,6 +54,13 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   const [profileData, setProfileData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  
+  // State for menu
+  const [menuVisible, setMenuVisible] = useState(false);
+  
+  // State for edit mode
+  const [editMode, setEditMode] = useState(false);
   
   // Get authenticated user from context
   const { user, logout: authLogout } = useAuth();
@@ -267,112 +283,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  // Render stats section
-  const renderStats = () => (
-    <View style={styles.statsContainer}>
-      <View style={styles.statsRow}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{userData.stats.games}</Text>
-          <Text style={styles.statLabel}>Games</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{userData.stats.goals}</Text>
-          <Text style={styles.statLabel}>Goals</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{userData.stats.assists}</Text>
-          <Text style={styles.statLabel}>Assists</Text>
-        </View>
-      </View>
-      <View style={styles.statsRow}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{userData.stats.points}</Text>
-          <Text style={styles.statLabel}>Points</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{userData.stats.penaltyMinutes}</Text>
-          <Text style={styles.statLabel}>PIM</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{(userData.stats.points / userData.stats.games).toFixed(1)}</Text>
-          <Text style={styles.statLabel}>PPG</Text>
-        </View>
-      </View>
-    </View>
-  );
 
-  // Render achievements section
-  const renderAchievements = () => (
-    <View style={styles.achievementsContainer}>
-      {userData.achievements.map((achievement) => (
-        <Card key={achievement.id} style={styles.achievementCard}>
-          <LinearGradient
-            colors={['#F5F5F5', '#FFFFFF']}
-            style={styles.achievementGradient}
-          >
-            <View style={styles.achievementIcon}>
-              <MaterialCommunityIcons name={achievement.icon as any} size={28} color="#1565C0" />
-            </View>
-            <View style={styles.achievementContent}>
-              <Text style={styles.achievementTitle}>{achievement.title}</Text>
-              <Text style={styles.achievementSeason}>{achievement.season}</Text>
-            </View>
-          </LinearGradient>
-        </Card>
-      ))}
-    </View>
-  );
-
-  // Render activities section
-  const renderActivities = () => (
-    <View style={styles.activitiesContainer}>
-      {userData.activities.map((activity) => (
-        <Card key={activity.id} style={styles.activityCard}>
-          <Card.Content style={styles.activityContent}>
-            <View style={styles.activityHeader}>
-              <View style={styles.activityTypeContainer}>
-                <Chip 
-                  style={[
-                    styles.activityTypeChip,
-                    activity.type === 'Game' && styles.gameChip,
-                    activity.type === 'Practice' && styles.practiceChip,
-                    activity.type === 'Event' && styles.eventChip,
-                  ]}
-                  textStyle={{ fontSize: 12 }}
-                >
-                  {activity.type}
-                </Chip>
-              </View>
-              <Text style={styles.activityDate}>{activity.date}</Text>
-            </View>
-            
-            <Text style={styles.activityTitle}>{activity.title}</Text>
-            
-            {activity.result && (
-              <View style={styles.activityDetail}>
-                <MaterialCommunityIcons name="scoreboard" size={16} color="#666" />
-                <Text style={styles.activityDetailText}>{activity.result}</Text>
-              </View>
-            )}
-            
-            {activity.stats && (
-              <View style={styles.activityDetail}>
-                <MaterialCommunityIcons name="chart-line" size={16} color="#666" />
-                <Text style={styles.activityDetailText}>{activity.stats}</Text>
-              </View>
-            )}
-            
-            {activity.duration && (
-              <View style={styles.activityDetail}>
-                <MaterialCommunityIcons name="clock-outline" size={16} color="#666" />
-                <Text style={styles.activityDetailText}>{activity.duration}</Text>
-              </View>
-            )}
-          </Card.Content>
-        </Card>
-      ))}
-    </View>
-  );
 
   // Render settings section
   const renderSettings = () => (
@@ -477,31 +388,28 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   // Render the appropriate content based on the active tab
   const renderContent = () => {
     switch (activeTab) {
-      case 'stats':
-        return renderStats();
-      case 'achievements':
-        return renderAchievements();
-      case 'activities':
-        return renderActivities();
       case 'settings':
         return renderSettings();
       default:
-        return null;
+        return renderSettings();
     }
   };
 
   // Show loading state
-  if (loading) {
+  if (loading && !refreshing) {
     return (
       <View style={[styles.container, styles.centerContent]}>
         <StatusBar style="light" />
-        <Text>Loading profile...</Text>
+        <LinearGradient
+          colors={['#1565C0', '#0D47A1']}
+          style={styles.loadingBackground}
+        >
+          <ActivityIndicator size="large" color="white" />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </LinearGradient>
       </View>
     );
   }
-  
-  // Debug information - only log when there are changes
-  // Removed frequent state logging to reduce console clutter
   
   // Add a refresh function for manual refresh
   const refreshProfile = async () => {
@@ -529,7 +437,14 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
       setError(err.message);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+  
+  // Handle pull-to-refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refreshProfile();
   };
   
   // Show error state
@@ -537,10 +452,27 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
     return (
       <View style={[styles.container, styles.centerContent]}>
         <StatusBar style="light" />
-        <Text style={styles.errorText}>Error loading profile: {error}</Text>
-        <Button mode="contained" onPress={() => navigation.goBack()} style={{marginTop: 20}}>
-          Go Back
-        </Button>
+        <Surface style={styles.errorContainer} elevation={4}>
+          <MaterialCommunityIcons name="alert-circle" size={48} color="#D32F2F" />
+          <Text style={styles.errorText}>Error loading profile</Text>
+          <Text style={styles.errorMessage}>{error}</Text>
+          <Button 
+            mode="contained" 
+            onPress={() => navigation.goBack()} 
+            style={styles.errorButton}
+            buttonColor="#1565C0"
+          >
+            Go Back
+          </Button>
+          <Button 
+            mode="outlined" 
+            onPress={refreshProfile} 
+            style={styles.retryButton}
+            textColor="#1565C0"
+          >
+            Retry
+          </Button>
+        </Surface>
       </View>
     );
   }
@@ -561,86 +493,125 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
       <View style={styles.container}>
         <StatusBar style="light" />
         
-        {/* Profile Header */}
-        <LinearGradient
-          colors={['#1565C0', '#0D47A1']}
-          style={styles.header}
-        >
-          {/* Header actions (back button and logout) */}
-          <View style={styles.headerActions}>
-            <IconButton
-              icon="arrow-left"
-              iconColor="white"
-              size={24}
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-            />
-            <IconButton
-              icon="logout"
-              iconColor="white"
-              size={24}
-              style={styles.logoutIcon}
-              onPress={() => setLogoutDialogVisible(true)}
-            />
-          </View>
-          
-          <View style={styles.profileInfo}>
-            <Avatar.Image 
-              source={{ uri: userData.avatar }} 
-              size={isTablet ? 120 : 100} 
-              style={styles.avatar}
-            />
-            <View style={styles.userInfo}>
-              <Text style={styles.userName}>{userData.name}</Text>
-              <Text style={styles.userUsername}>@{userData.username}</Text>
-              
-              <View style={styles.userDetailsRow}>
-                <View style={styles.userDetailItem}>
-                  <MaterialCommunityIcons name="account-group" size={16} color="white" />
-                  <Text style={styles.userDetailText}>{userData.team}</Text>
-                </View>
-                
-                <View style={styles.userDetailItem}>
-                  <MaterialCommunityIcons name="hockey-puck" size={16} color="white" />
-                  <Text style={styles.userDetailText}>{userData.position} #{userData.jerseyNumber}</Text>
-                </View>
-                
-                <View style={styles.userDetailItem}>
-                  <MaterialCommunityIcons name="calendar" size={16} color="white" />
-                  <Text style={styles.userDetailText}>Since {userData.joinDate}</Text>
-                </View>
-              </View>
-            </View>
-          </View>
-          
-          <View style={styles.bioContainer}>
-            <Text style={styles.bioText}>{userData.bio}</Text>
-          </View>
-        </LinearGradient>
-        
-        {/* Tabs */}
-        <View style={styles.tabContainer}>
-          <SegmentedButtons
-            value={activeTab}
-            onValueChange={setActiveTab}
-            buttons={[
-              { value: 'stats', label: 'Stats' },
-              { value: 'achievements', label: 'Achievements' },
-              { value: 'activities', label: 'Activities' },
-              { value: 'settings', label: 'Settings' },
-            ]}
-            style={styles.tabButtons}
-          />
-        </View>
+        {/* App Bar */}
+        <Appbar.Header style={styles.appbar} statusBarHeight={insets.top}>
+          <Appbar.BackAction color="white" onPress={() => navigation.goBack()} />
+          <Appbar.Content title="Profile" color="white" />
+          <Menu
+            visible={menuVisible}
+            onDismiss={() => setMenuVisible(false)}
+            anchor={<Appbar.Action icon="dots-vertical" color="white" onPress={() => setMenuVisible(true)} />}
+          >
+            <Menu.Item onPress={() => {
+              setMenuVisible(false);
+              setEditMode(true);
+            }} title="Edit Profile" leadingIcon="pencil" />
+            <Menu.Item onPress={() => {
+              setMenuVisible(false);
+              setLogoutDialogVisible(true);
+            }} title="Sign Out" leadingIcon="logout" />
+          </Menu>
+        </Appbar.Header>
         
         {/* Content */}
         <ScrollView 
           style={styles.content}
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#1565C0']}
+              tintColor="#1565C0"
+            />
+          }
         >
-          {renderContent()}
+          {/* Profile Header */}
+          <Surface style={styles.profileCard} elevation={2}>
+            <LinearGradient
+              colors={['#1565C0', '#0D47A1']}
+              style={styles.profileHeader}
+            >
+              <View style={styles.profileImageContainer}>
+                <View style={styles.avatarContainer}>
+                  <Image 
+                    source={{ uri: userData.avatar }} 
+                    style={styles.avatar}
+                  />
+                </View>
+                {editMode ? (
+                  <TouchableOpacity style={styles.editAvatarButton}>
+                    <MaterialCommunityIcons name="camera" size={20} color="white" />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+              
+              <View style={styles.userInfo}>
+                <Text style={styles.userName}>{userData.name}</Text>
+                <Text style={styles.userUsername}>@{userData.username}</Text>
+                
+                <View style={styles.roleContainer}>
+                  <MaterialCommunityIcons name="shield-account" size={16} color="white" />
+                  <Text style={styles.roleText}>{userData.role}</Text>
+                </View>
+                
+                <View style={styles.userDetailsRow}>
+                  <View style={styles.userDetailItem}>
+                    <MaterialCommunityIcons name="account-group" size={16} color="white" />
+                    <Text style={styles.userDetailText}>{userData.team}</Text>
+                  </View>
+                  
+                  <View style={styles.userDetailItem}>
+                    <MaterialCommunityIcons name="hockey-puck" size={16} color="white" />
+                    <Text style={styles.userDetailText}>{userData.position} #{userData.jerseyNumber}</Text>
+                  </View>
+                  
+                  <View style={styles.userDetailItem}>
+                    <MaterialCommunityIcons name="calendar" size={16} color="white" />
+                    <Text style={styles.userDetailText}>Since {userData.joinDate}</Text>
+                  </View>
+                </View>
+              </View>
+            </LinearGradient>
+            
+
+          </Surface>
+          
+          {/* Contact Information */}
+          <Surface style={styles.contactCard} elevation={2}>
+            <View style={styles.contactHeader}>
+              <MaterialCommunityIcons name="card-account-details" size={22} color="#1565C0" />
+              <Text style={styles.contactTitle}>Contact Information</Text>
+            </View>
+            <Divider style={styles.divider} />
+            
+            <View style={styles.contactItem}>
+              <MaterialCommunityIcons name="email" size={20} color="#666" />
+              <Text style={styles.contactText}>{userData.email}</Text>
+            </View>
+            
+            <View style={styles.contactItem}>
+              <MaterialCommunityIcons name="phone" size={20} color="#666" />
+              <Text style={styles.contactText}>{userData.phone}</Text>
+            </View>
+          </Surface>
+          
+          {/* Settings */}
+          <Surface style={styles.settingsContainer} elevation={2}>
+            {renderContent()}
+          </Surface>
         </ScrollView>
+        
+        {/* Edit FAB */}
+        {!editMode && (
+          <FAB
+            icon="pencil"
+            style={styles.fab}
+            onPress={() => setEditMode(true)}
+            color="white"
+          />
+        )}
       </View>
       
       {/* Logout dialog */}
@@ -665,87 +636,169 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
 };
 
 const styles = StyleSheet.create({
+  // Base styles
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+  },
   centerContent: {
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  container: {
+  content: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
   },
-  header: {
-    paddingTop: 60,
-    paddingBottom: 30,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+  contentContainer: {
+    padding: 16,
+    paddingBottom: 40,
   },
-  headerActions: {
-    position: 'absolute',
-    top: 40,
-    left: 16,
-    right: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    zIndex: 10,
-    paddingTop: 10,
+  divider: {
+    marginVertical: 12,
   },
-  backButton: {
-    margin: 0,
-    backgroundColor: 'rgba(0,0,0,0.1)',
-    borderRadius: 20,
-  },
-  logoutIcon: {
-    margin: 0,
-    backgroundColor: 'rgba(0,0,0,0.1)',
-    borderRadius: 20,
-  },
-  profileInfo: {
-    flexDirection: 'row',
+  
+  // Loading state
+  loadingBackground: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
-    marginTop: 30,
+    padding: 20,
+  },
+  loadingText: {
+    color: 'white',
+    fontSize: 16,
+    marginTop: 16,
+  },
+  
+  // Error state
+  errorContainer: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 24,
+    width: '90%',
+    alignItems: 'center',
+    maxWidth: 400,
+  },
+  errorText: {
+    color: '#D32F2F',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    color: '#666',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  errorButton: {
+    marginTop: 8,
+    width: '100%',
+  },
+  retryButton: {
+    marginTop: 12,
+    width: '100%',
+  },
+  
+  // App Bar
+  appbar: {
+    backgroundColor: '#1565C0',
+    elevation: 0,
+  },
+  
+  // Profile Card
+  profileCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  profileHeader: {
+    padding: 20,
+  },
+  profileImageContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    position: 'relative',
+  },
+  avatarContainer: {
+    borderRadius: 60,
+    padding: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 120,
+    height: 120,
   },
   avatar: {
-    backgroundColor: '#0D47A1',
+    width: 110,
+    height: 110,
+    borderRadius: 55,
     borderWidth: 3,
     borderColor: 'white',
-    marginRight: 16,
+    backgroundColor: '#0D47A1',
+  },
+  editAvatarButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#1565C0',
+    borderRadius: 20,
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'white',
   },
   userInfo: {
-    flex: 1,
-    paddingTop: 10,
+    alignItems: 'center',
   },
   userName: {
     fontSize: 24,
     fontWeight: 'bold',
     color: 'white',
     marginBottom: 4,
+    textAlign: 'center',
   },
   userUsername: {
     fontSize: 16,
     color: 'rgba(255,255,255,0.8)',
-    marginBottom: 12,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  roleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(13, 71, 161, 0.6)',
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  roleText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 14,
+    marginLeft: 6,
   },
   userDetailsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'center',
   },
   userDetailItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    marginRight: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    marginHorizontal: 4,
     marginBottom: 8,
   },
   userDetailText: {
@@ -753,178 +806,40 @@ const styles = StyleSheet.create({
     marginLeft: 6,
     fontSize: 14,
   },
-  bioContainer: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 10,
+
+  
+  // Contact Card
+  contactCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 16,
+    padding: 16,
   },
-  bioText: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  tabContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    marginTop: -20,
-    zIndex: 1,
-  },
-  tabButtons: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    padding: 8,
-  },
-  content: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 40,
-  },
-  sectionHeader: {
+  contactHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginVertical: 16,
+    marginBottom: 8,
   },
-  sectionTitle: {
+  contactTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
-  },
-  seasonChip: {
-    backgroundColor: '#E3F2FD',
-  },
-  statsContainer: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 16,
-  },
-  statItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
     color: '#1565C0',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 14,
-    color: '#666',
-  },
-  achievementsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  achievementCard: {
-    width: '48%',
-    marginBottom: 16,
-    borderRadius: 12,
-    overflow: 'hidden',
-    elevation: 2,
-  },
-  achievementGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-  },
-  achievementIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#E3F2FD',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  achievementContent: {
-    flex: 1,
-  },
-  achievementTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
-  },
-  achievementSeason: {
-    fontSize: 14,
-    color: '#666',
-  },
-  activitiesContainer: {
-    marginBottom: 20,
-  },
-  activityCard: {
-    marginBottom: 16,
-    borderRadius: 12,
-    overflow: 'hidden',
-    elevation: 2,
-  },
-  activityContent: {
-    padding: 16,
-  },
-  activityHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  activityTypeContainer: {
-    flexDirection: 'row',
-  },
-  activityTypeChip: {
-    height: 28,
-  },
-  gameChip: {
-    backgroundColor: '#E3F2FD',
-  },
-  practiceChip: {
-    backgroundColor: '#E8F5E9',
-  },
-  eventChip: {
-    backgroundColor: '#FFF3E0',
-  },
-  activityDate: {
-    fontSize: 14,
-    color: '#666',
-  },
-  activityTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-  },
-  activityDetail: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  activityDetailText: {
-    fontSize: 14,
-    color: '#666',
     marginLeft: 8,
   },
+  contactItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  contactText: {
+    fontSize: 16,
+    color: '#333',
+    marginLeft: 12,
+  },
+  
+  // Settings
   settingsContainer: {
     backgroundColor: 'white',
     borderRadius: 16,
@@ -941,10 +856,21 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
+  
+  // FAB
+  fab: {
+    position: 'absolute',
+    margin: 16,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#1565C0',
+  },
+  
+  // Dialog
   logoutDialog: {
     borderRadius: 12,
     backgroundColor: 'white',
-  },
+  }
 });
 
 export default ProfileScreen;

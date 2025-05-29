@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../utils/supabase';
+import { useAuth } from '../context/AuthContext';
 
 // Mock data for team categories
 const teamCategories = [
@@ -188,6 +189,7 @@ type Team = {
 const TeamsScreen = ({ navigation }: TeamsScreenProps) => {
   const theme = useTheme();
   const { width } = Dimensions.get('window');
+  const { user } = useAuth(); // Get the user from auth context
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('1'); // Default to 'All'
@@ -531,12 +533,14 @@ const TeamsScreen = ({ navigation }: TeamsScreenProps) => {
               <Text style={styles.headerSubtitle}>Discover Namibian hockey teams</Text>
             </View>
             <View style={styles.headerActions}>
-              <TouchableOpacity 
-                style={styles.iconButton}
-                onPress={() => navigation.navigate('CreateTeam')}
-              >
-                <Icon name="plus" size={24} color="#0066CC" />
-              </TouchableOpacity>
+              {user?.role === 'admin' && (
+                <TouchableOpacity 
+                  style={styles.iconButton}
+                  onPress={() => navigation.navigate('CreateTeam')}
+                >
+                  <Icon name="plus" size={24} color="#0066CC" />
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </Animated.View>
@@ -690,7 +694,7 @@ const TeamsScreen = ({ navigation }: TeamsScreenProps) => {
             {filteredTeams.length > 0 ? (
               <View style={styles.teamsGrid}>
                 {filteredTeams.map((item, index) => (
-                  <View key={item.id}>
+                  <View key={`team-${item.id}-${index}`}>
                     {renderTeamCard({ item, index })}
                   </View>
                 ))}

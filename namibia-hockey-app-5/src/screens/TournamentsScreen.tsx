@@ -4,6 +4,7 @@ import { Searchbar, Card, Title, Divider, Chip, useTheme, Button, Paragraph, Bad
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../utils/supabase';
+import { useAuth } from '../context/AuthContext';
 
 // Default placeholder image for tournaments without images
 const DEFAULT_TOURNAMENT_IMAGE = 'https://via.placeholder.com/300x150/0066CC/FFFFFF?text=Tournament';
@@ -70,6 +71,7 @@ type Tournament = {
 const TournamentsScreen = ({ navigation }: TournamentsScreenProps) => {
   const theme = useTheme();
   const { width } = Dimensions.get('window');
+  const { user } = useAuth(); // Get the user from auth context
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('1'); // Default to 'All'
@@ -356,16 +358,18 @@ const TournamentsScreen = ({ navigation }: TournamentsScreenProps) => {
             >
               <Icon name="arrow-left" size={24} color="#333333" />
             </TouchableOpacity>
-            <View>
+            <View style={styles.headerTextContainer}>
               <Text style={styles.headerTitle}>Tournaments</Text>
               <Text style={styles.headerSubtitle}>Find and join hockey tournaments</Text>
             </View>
-            <TouchableOpacity 
-              style={styles.iconButton}
-              onPress={() => navigation.navigate('CreateTournament')}
-            >
-              <Icon name="plus" size={24} color="#0066CC" />
-            </TouchableOpacity>
+            {user?.role === 'admin' && (
+              <TouchableOpacity 
+                style={styles.iconButton}
+                onPress={() => navigation.navigate('CreateTournament')}
+              >
+                <Icon name="plus" size={24} color="#0066CC" />
+              </TouchableOpacity>
+            )}
           </View>
         </Animated.View>
         
@@ -449,13 +453,15 @@ const TournamentsScreen = ({ navigation }: TournamentsScreenProps) => {
           />
         )}
         
-        {/* Floating Action Button */}
-        <TouchableOpacity 
-          style={styles.fab}
-          onPress={() => navigation.navigate('CreateTournament')}
-        >
-          <Icon name="plus" size={24} color="white" />
-        </TouchableOpacity>
+        {/* Floating Action Button - only visible to admin users */}
+        {user?.role === 'admin' && (
+          <TouchableOpacity 
+            style={styles.fab}
+            onPress={() => navigation.navigate('CreateTournament')}
+          >
+            <Icon name="plus" size={24} color="white" />
+          </TouchableOpacity>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -483,6 +489,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 8,
+  },
+  headerTextContainer: {
+    flex: 1,
+    alignItems: 'center',
   },
   backButton: {
     width: 40,
